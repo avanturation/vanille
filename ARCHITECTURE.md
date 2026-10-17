@@ -1,5 +1,7 @@
 # Architecture
 
+> 별도 다중 AirPlay 브리지의 구조와 영상 싱크 제한은 [EXPERIMENT_AIRPLAY.md](EXPERIMENT_AIRPLAY.md), [AIRPLAY_AV_SYNC.md](AIRPLAY_AV_SYNC.md)에 있습니다. 아래 구조는 변경하지 않은 정식 HAL 앱입니다.
+
 ## 범위
 
 Vanille는 Swift/AppKit/Core Audio로 구현합니다. 최소 macOS 15, arm64입니다. 프로세스 탭을 읽고, 앱별 Gain → Global EQ → 출력별 Gain/Delay 순서로 처리하여 여러 독립 스테레오 장치에 씁니다. 사설 Aggregate를 기본 시스템 출력으로 선택하지 않습니다. 캡처 가능한 일반 오디오가 대상이며 DRM 오디오의 처리를 보장하지 않습니다.

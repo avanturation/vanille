@@ -1,8 +1,10 @@
 # Vanille
 
+> **실험 브랜치 안내:** MR4 기본 출력 상태에서 두 HomePod 목적지까지 세 출력 동시 청취와 스피커 상호 싱크를 사용자가 확인했습니다. **영상 싱크는 실패했으며 미해결입니다.** 정식 앱은 보존했고 별도 앱으로 검사했습니다. [최신 실험 결과와 실행법](AIRPLAY_AV_SYNC.md), [구조와 제약](EXPERIMENT_AIRPLAY.md)을 먼저 확인하세요. 아래 설명은 기존 HAL 기반 정식 앱의 범위입니다.
+
 Swift와 AppKit으로 만든 macOS 메뉴 막대 오디오 컨트롤러입니다. macOS 15 이상, Apple Silicon을 대상으로 합니다. 드라이버, 관리자 권한, 웹 런타임, 외부 패키지가 필요하지 않습니다.
 
-**현재 결과는 멀티 출력의 부분 구현입니다. MR4 + HomePod 페어 + HomePod mini 페어의 세 출력 동시 재생은 완료하지 못했습니다.** 이 Mac에서는 시스템에 연결한 AirPlay 출력 하나만 Core Audio 장치로 나타납니다. Apple Music/AVPlayer의 여러 AirPlay 선택을 시스템 전체 라우팅으로 표시하지 않습니다. 자세한 근거는 [ROUTING_FEASIBILITY.md](ROUTING_FEASIBILITY.md)에 있습니다.
+**기존 HAL 기반 앱의 멀티 출력은 부분 구현입니다.** 이 Mac에서는 시스템에 연결한 AirPlay 출력 하나만 Core Audio 장치로 나타납니다. 별도 AVPlayer 브리지의 세 출력 성공과 기존 정식 앱을 구분합니다. 자세한 근거는 [ROUTING_FEASIBILITY.md](ROUTING_FEASIBILITY.md)에 있습니다.
 
 ## 실행
 

@@ -13,6 +13,7 @@ final class LiveBridgeSession {
     private var timer:DispatchSourceTimer?
     private let player:AVPlayer
     private let device:OutputDevice
+    private let testEndsAt:Date?
     private var cursor:Int64=0
     private let pcm=UnsafeMutablePointer<Float>.allocate(capacity:4096)
     private var errorText=""
@@ -21,13 +22,14 @@ final class LiveBridgeSession {
     private var callbackCount:UInt64=0
     private var callbackChangedAt=Date()
     private var lastHardwareCheck=Date.distantPast
-    private var outputPeak=0.0
+    private var alignmentRequested=false
+    private var alignmentRecoveries=0
     private(set) var baseURL:URL?
     var startedItem=false // main thread only
     var onFailure:((String)->Void)?
 
     init(player:AVPlayer,device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool) throws {
-        self.player=player;self.device=device
+        self.player=player;self.device=device;testEndsAt=tone ? Date().addingTimeInterval(90) : nil
         pcm.initialize(repeating:0,count:4096)
         do {
             try queue.sync {
@@ -49,6 +51,7 @@ final class LiveBridgeSession {
     private func tick() {
         guard let context=capture.context,let segments,errorText.isEmpty else { return }
         do {
+            if let testEndsAt,Date()>=testEndsAt { throw AudioFailure(operation:"Timing test finished; original output restored",status:-1) }
             if context.fault.load(ordering:.relaxed) { throw AudioFailure(operation:"Audio format changed; original output restored",status:-1) }
             let count=context.callbacks.load(ordering:.relaxed)
             if count != callbackCount { callbackCount=count;callbackChangedAt=Date() }
@@ -71,13 +74,22 @@ final class LiveBridgeSession {
             }
             let date=player.currentItem?.currentDate()
             validClock=player.timeControlStatus == .playing && date != nil && segments.ready
+            if alignmentRequested,let timebase=player.currentItem?.timebase {
+                var id:AudioDeviceID=0
+                let status=CMAudioDeviceClockGetAudioDevice(CMTimebaseCopyUltimateSourceClock(timebase),deviceUIDOut:nil,deviceIDOut:&id,trackingDefaultDeviceOut:nil)
+                if status==noErr,id==device.id {
+                    throw AudioFailure(operation:"Player returned to the Mac; original MR4 output restored. Select AirPlay again before restarting",status:-1)
+                }
+            }
             if let date,validClock {
                 playbackFrame=date.timeIntervalSince(segments.origin)*48_000
                 let head=Double(context.history.published.load(ordering:.acquiring))
                 validClock=playbackFrame>=0 && playbackFrame<head && playbackFrame>head-48_000*40
             }
             context.clock.publish(PlaybackAnchor(frame:playbackFrame,host:AudioGetCurrentHostTime(),valid:validClock))
-            if capture.replaced && !validClock { try capture.replaceOriginal(false) }
+            if alignmentRequested && validClock && context.hasSignal && !capture.replaced {
+                try capture.replaceOriginal(true);alignmentRecoveries += 1
+            } else if capture.replaced && !validClock { try capture.replaceOriginal(false) }
         } catch { fail(error.localizedDescription) }
     }
     private func fail(_ text:String) {
@@ -91,11 +103,18 @@ final class LiveBridgeSession {
     var ready:Bool { queue.sync { segments?.ready == true && errorText.isEmpty } }
     func replaceOriginal(_ value:Bool) throws {
         try queue.sync {
-            guard !value || validClock else { throw AudioFailure(operation:"Remote playback clock is not ready; original output retained",status:-1) }
-            try capture.replaceOriginal(value)
+            alignmentRequested=value
+            if !value || validClock && capture.context?.hasSignal == true { try capture.replaceOriginal(value) }
         }
     }
     func setLocalVolume(_ value:Double) { queue.sync { capture.context?.localGain.store(min(1,max(0,value)),ordering:.relaxed) } }
+    func prepareForSeek() {
+        queue.sync {
+            validClock=false
+            capture.context?.clock.publish(PlaybackAnchor())
+            try? capture.replaceOriginal(false)
+        }
+    }
     var snapshot:[String:Any] {
         queue.sync {
             var result=segments?.snapshot ?? [:]
@@ -103,11 +122,20 @@ final class LiveBridgeSession {
             result["encodedFrames"]=cursor
             result["captureCallbacks"]=capture.context?.callbacks.load(ordering:.relaxed) ?? 0
             result["capturedInputPeak"]=capture.context?.inputPeak.load(ordering:.relaxed) ?? 0
+            result["localOutputRMS"]=capture.context?.localOutputRMS.load(ordering:.relaxed) ?? 0
+            result["localFrameErrorMS"]=(capture.context?.localFrameError.load(ordering:.relaxed) ?? 0)/48
             result["capturedApplications"]=capture.appNames
             result["originalReplaced"]=capture.replaced
+            result["mr4Enabled"]=alignmentRequested
+            result["alignmentActivations"]=alignmentRecoveries
             result["playbackClockReady"]=validClock
             result["playbackFrame"]=playbackFrame
-            result["bufferedSeconds"]=(Double(capture.context?.history.published.load(ordering:.acquiring) ?? 0)-playbackFrame)/48_000
+            result["bufferedSeconds"]=capture.context.map { (Double($0.history.published.load(ordering:.acquiring))-playbackFrame)/48_000 } ?? 0
+            if let http=server?.metrics {
+                result["httpRequests"]=http.requests;result["httpBytes"]=http.bytes
+                result["partialSegmentRequests"]=http.parts;result["fullSegmentRequests"]=http.fullSegments
+                result["blockingReloadRequests"]=http.blockingReloads
+            }
             result["cleanup"]=capture.lastCleanup
             result["error"]=errorText
             result["memoryOnly"]=true
@@ -118,6 +146,7 @@ final class LiveBridgeSession {
         queue.sync {
             timer?.cancel();timer=nil
             validClock=false
+            alignmentRequested=false
             try? capture.replaceOriginal(false)
             capture.stop();segments?.stop()
         }

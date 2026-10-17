@@ -1,0 +1,9 @@
+PASS Real AAC writer produces in-memory initialization and live parts
+PASS Encoded part duration fits the advertised 350 ms target
+PASS Live encoded retention remains bounded after 24 seconds
+PASS Manifest advertises the implemented partial-segment controls
+PASS Every full segment obeys the one-second HLS target duration
+PASS Full segment consists of the exact three advertised fMP4 parts
+PASS Preload and blocking reload wait for an unpublished part
+PASS Invalid and overflowing media requests fail safely
+8/8 live segment checks passed

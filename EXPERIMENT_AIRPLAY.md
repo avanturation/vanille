@@ -11,9 +11,13 @@ With MR4 still the system default and **zero AirPlay HAL devices**, an `AVPlayer
 
 Safari played the public Big Buck Bunny YouTube video. A Core Audio process tap captured the Safari audio; the experiment reused Vanille's DSP, encoded in-memory AAC fragments and delivered them to its own AVPlayer over a tokenized loopback-only HTTP endpoint. The user confirmed that **MR4, HomePod and HomePod mini all produced the audio while the default output remained MR4**.
 
-The user also reported **severe HomePod delay**. This is a simultaneous-output feasibility result, not a successful synchronization or product acceptance result. The initial bridge accumulated approximately 5–6 seconds between captured frames and player time. MR4 alignment could also stay disabled after buffering, which is being corrected separately.
+After the initial severe HomePod delay report, MR4 playback was tied to the player's program-date timeline. The user then explicitly reported that **MR4 and the HomePods were in sync with one another, but audio was out of sync with video**. This is a qualitative listening confirmation, not a microphone measurement or a long-duration drift test. The video acceptance test still fails.
 
-Production regression checks: 63 passed. New retained-history/index-safety/playback-clock concurrency checks: 7 passed. Audio samples were never written to disk; diagnostic files contain numerical measurements only.
+The original bridge accumulated approximately 5–6 seconds between captured frames and player time. Partial-segment HLS reduced some observed offsets, but playback still measured roughly **3.6–4.8 seconds**, including after a live-edge seek. AVPlayer recommended a 3-second live offset on this system. A more aggressive 106.7 ms part experiment still measured about 4.1 seconds and was reverted. HTTP counters show predominantly full-segment consumption, so a partial-segment manifest is not claimed as proof of low-latency playback.
+
+Pausing restores the original path while retaining the user's MR4 inclusion choice. Resume now seeks to the live edge and automatically re-arms local alignment; it no longer deliberately plays the entire pause backlog. The final native test observed inclusion retained, original replacement off during pause, automatic activation on resume, and a 3.6-second immediate post-resume offset. When the native picker returned to Mac, the public Core Media device clock matched the local output; the new safety guard stopped playback/capture and restored the original path. This covers explicit route return, **not every possible network loss**.
+
+Production regression checks: 63 passed. Retained-history/index-safety/playback-clock concurrency checks: 7 passed. Native in-app AAC/manifest/retention checks: **8 passed**. The shell sandbox could not access the native AAC service and reports those checks as SKIP; the same checks were run successfully inside the native app. Audio samples were never written to disk; diagnostic files contain numerical measurements only. See [AIRPLAY_AV_SYNC.md](AIRPLAY_AV_SYNC.md) and `Tests/Results/AirPlay-*`.
 
 ## IMPLEMENTED
 
@@ -24,6 +28,9 @@ Production regression checks: 63 passed. New retained-history/index-safety/playb
 - Loopback-only, bounded HTTP connections; no LAN server or external upload.
 - AVPlayer plus Apple's native multi-AirPlay picker; remote volume remains in Apple's UI.
 - Local MR4 timeline following the player's program date, original-output recovery and watchdog.
+- Partial-segment manifest, bounded blocking reload/preload handling, and numerical HTTP/playback diagnostics.
+- Sticky MR4 inclusion, live-edge resume, explicit local-clock fallback detection, 90-second timing-test limit.
+- **Use MR4 for Video** stops the bridge and returns to original playback. There are no user delay controls.
 
 ## PARTIAL
 
@@ -34,15 +41,16 @@ The native picker manages remote selection and volume. Public `AVRouteDetector` 
 ## NOT IMPLEMENTED
 
 - Product integration, saved named AirPlay destination groups and automatic identity-based reconnection.
-- Verified low-latency playback and acoustic synchronization across all three outputs.
+- Lip-synchronized video from Safari/Chrome/VLC while all three outputs are in use.
+- Quantified acoustic synchronization and long-duration drift stability across all three outputs.
 - Proven seamless device-loss/reconnect behavior or protected-service compatibility.
 - Private AVOutputContext/MediaRemote, direct AirPlay/RAOP protocol or third-party drivers.
 
 ## KNOWN ISSUES
 
-- Initial HLS path adds several seconds of latency and is unsuitable for lip-synchronized video.
-- An output can revert to original audio after player buffering and fail to rejoin alignment in the initial build.
-- AVPlayer may fall back to the Mac; selected audio route identities are not exposed by the inspected public API. The experiment cannot yet guarantee robust automatic route recovery.
+- The HLS/AirPlay path still adds several seconds of latency and is unsuitable for lip-synchronized video in another app. Lowering part sizes and forward buffering did not solve it.
+- A live-edge seek can discard pause backlog, but cannot remove the underlying AirPlay/player buffering.
+- Selected audio route identities are not exposed by the inspected public API. Returning explicitly to Mac is now detected safely through a local device clock match, but the experiment cannot yet guarantee recovery from every route failure or reconnect automatically.
 - Only active apps present when the experimental session starts are captured. Production's discovery behavior is retained in the main app, not yet integrated with this bridge.
 - Snapshot EQ/application settings are reused; live product controls are not connected to this separate experiment.
 - Apple advises against local HLS servers in its authoring guidance. This loopback bridge is a feasibility experiment, not an established production architecture.

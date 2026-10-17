@@ -8,6 +8,7 @@ final class MemoryHTTPServer {
         var status = 200
         var contentType: String
         var data: Data
+        var pending = false
     }
     private let queue = DispatchQueue(label: "Vanille.AirPlayLab.HTTP")
     private var listener: NWListener?
@@ -16,7 +17,12 @@ final class MemoryHTTPServer {
     private(set) var port: UInt16 = 0
     private var requestCount = 0
     private var sentCount = 0
-    var metrics:(requests:Int,bytes:Int) { queue.sync { (requestCount,sentCount) } }
+    private var partRequests=0
+    private var fullSegmentRequests=0
+    private var blockingReloadRequests=0
+    var metrics:(requests:Int,bytes:Int,parts:Int,fullSegments:Int,blockingReloads:Int) {
+        queue.sync { (requestCount,sentCount,partRequests,fullSegmentRequests,blockingReloadRequests) }
+    }
     let token = UUID().uuidString
     var onReady: ((URL) -> Void)?
     var onError: ((String) -> Void)?
@@ -75,13 +81,26 @@ final class MemoryHTTPServer {
         }
     }
 
-    private func respond(_ connection:NWConnection, header:String) {
+    private func respond(_ connection:NWConnection, header:String,deadline:Date?=nil) {
         let lines = header.components(separatedBy:"\r\n")
         let first = (lines.first ?? "").split(separator:" ")
         guard first.count >= 2, first[0] == "GET" || first[0] == "HEAD",
               first[1].hasPrefix("/\(token)/") else { send(connection,status:404,type:"text/plain",body:Data()); return }
-        let path = String(first[1].dropFirst(token.count+2)).components(separatedBy:"?")[0]
+        let path = String(first[1].dropFirst(token.count+2))
+        if deadline == nil {
+            if path.hasPrefix("p"),path.contains(".m4s") { partRequests += 1 }
+            if path.hasPrefix("s"),path.contains(".m4s") { fullSegmentRequests += 1 }
+            if path.contains("_HLS_msn=") { blockingReloadRequests += 1 }
+        }
         guard let response = resource(path) else { send(connection,status:404,type:"text/plain",body:Data()); return }
+        if response.pending {
+            let end=deadline ?? Date().addingTimeInterval(3)
+            guard Date()<end else { send(connection,status:503,type:"text/plain",body:Data());return }
+            queue.asyncAfter(deadline:.now()+0.02) { [weak self,weak connection] in
+                if let self,let connection { self.respond(connection,header:header,deadline:end) }
+            }
+            return
+        }
         requestCount += 1
         var body = response.data
         var status = response.status

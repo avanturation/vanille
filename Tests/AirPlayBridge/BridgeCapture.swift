@@ -17,6 +17,8 @@ final class BridgeRender:@unchecked Sendable {
     let callbacks=Atomic<UInt64>(0)
     let fault=Atomic<Bool>(false)
     let inputPeak=Atomic<Double>(0)
+    let localOutputRMS=Atomic<Double>(0)
+    let localFrameError=Atomic<Double>(0)
     let localEnabled=Atomic<Bool>(false)
     let localGain=Atomic<Double>(1)
     private let mappings:[Int]
@@ -95,6 +97,8 @@ final class BridgeRender:@unchecked Sendable {
         }
         let correction=enabled ? min(0.005,max(-0.005,(target-localPosition)/(sampleRate*0.5))) : 0
         let head=history.published.load(ordering:.acquiring),fadeFrames=max(1,Int(sampleRate*0.03))
+        localFrameError.store(enabled ? target-localPosition : 0,ordering:.relaxed)
+        var localEnergy=0.0
         for frame in 0..<count {
             gain += min(1/(sampleRate*0.01),max(-1/(sampleRate*0.01),targetGain-gain))
             if gain>0,localPosition>=0 {
@@ -105,10 +109,12 @@ final class BridgeRender:@unchecked Sendable {
                     previousPosition += 1;fadeRemaining -= 1
                 }
                 left.data![frame*left.stride]=sample.0*Float(gain);right.data![frame*right.stride]=sample.1*Float(gain)
+                localEnergy += Double(sample.0*sample.0+sample.1*sample.1)*gain*gain*0.5
                 localPosition += 1+correction
             }
         }
         if !enabled && gain<=0 { localPosition = -1 }
+        localOutputRMS.store(sqrt(localEnergy/Double(count)),ordering:.relaxed)
         callbacks.wrappingAdd(1,ordering:.relaxed)
     }
 }

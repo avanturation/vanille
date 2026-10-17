@@ -38,7 +38,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     var observation:NSKeyValueObservation?
     var live:LiveBridgeSession?
     var liveError=""
-    let replaceButton=NSButton(checkboxWithTitle:"Replace original audio and align MR4",target:nil,action:nil)
+    var streamCheckReport="Not run"
+    let replaceButton=NSButton(checkboxWithTitle:"Include MR4",target:nil,action:nil)
     let localVolume=NSSlider(value:1,minValue:0,maxValue:1,target:nil,action:nil)
     var lastLive:[String:Any]=[:]
     let reportURL = URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("build/airplay-bridge.json")
@@ -48,11 +49,16 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         window.title = "Vanille AirPlay Bridge Experiment"; window.isReleasedWhenClosed = false
         let menu=NSMenu();let appItem=NSMenuItem();menu.addItem(appItem)
         let appMenu=NSMenu();appMenu.addItem(withTitle:"Quit AirPlay Experiment",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q");appItem.submenu=appMenu;NSApp.mainMenu=menu
+        let playback=NSMenuItem(title:"Playback",action:nil,keyEquivalent:"");let playbackMenu=NSMenu()
+        let pause=NSMenuItem(title:"Pause Player",action:#selector(pausePlayer),keyEquivalent:"p");pause.target=self;playbackMenu.addItem(pause)
+        let resume=NSMenuItem(title:"Resume Player",action:#selector(resumePlayer),keyEquivalent:"r");resume.target=self;playbackMenu.addItem(resume)
+        playback.submenu=playbackMenu;menu.addItem(playback)
+        let checks=NSMenuItem(title:"Native Stream Checks",action:#selector(runStreamChecks),keyEquivalent:"t");checks.target=self;playbackMenu.addItem(checks)
         let root = NSStackView(); root.orientation = .vertical; root.alignment = .leading; root.spacing = 12
-        let intro = NSTextField(wrappingLabelWithString:"Experimental player routing. Keep macOS output on MR4. The AirPlay picker routes this player's audio; a working live system-audio bridge must be verified separately.")
+        let intro = NSTextField(wrappingLabelWithString:"Multi-speaker audio experiment. Keep macOS output on MR4. This mode delays sound behind video. Use MR4 for Video restores the original sound immediately.")
         intro.font = .systemFont(ofSize:12)
         let picker = AVRoutePickerView(); picker.player = player; picker.setAccessibilityLabel("AirPlay destinations for experimental player")
-        let row = NSStackView(views:[picker,button("Play Quiet Pulse",#selector(play)),button("Live Pulse",#selector(livePulse)),button("Live System Audio",#selector(liveSystem)),button("Stop",#selector(stop))]); row.spacing = 8
+        let row = NSStackView(views:[picker,button("Play Quiet Pulse",#selector(play)),button("Live Pulse",#selector(livePulse)),button("Live System Audio",#selector(liveSystem)),button("Use MR4 for Video",#selector(stop))]); row.spacing = 8
         replaceButton.target=self;replaceButton.action=#selector(replaceOriginal)
         localVolume.target=self;localVolume.action=#selector(volumeChanged);localVolume.setAccessibilityLabel("MR4 experimental volume")
         let localRow=NSStackView(views:[replaceButton,NSTextField(labelWithString:"MR4"),localVolume]);localRow.spacing=10
@@ -102,7 +108,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
             guard tone || !apps.isEmpty else { throw AudioFailure(operation:"Play Safari, Chrome or another app before starting live capture",status:-1) }
             let session=try LiveBridgeSession(player:player,device:device,apps:apps,settings:settings,tone:tone)
             live=session
-            session.onFailure = { [weak self] error in self?.liveError=error;self?.player.pause();self?.refresh() }
+            session.onFailure = { [weak self] error in self?.liveError=error;self?.player.pause();self?.player.replaceCurrentItem(with:nil);self?.refresh() }
         } catch { liveError=error.localizedDescription }
         refresh()
     }
@@ -114,6 +120,25 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         refresh()
     }
     @objc func volumeChanged() { live?.setLocalVolume(localVolume.doubleValue) }
+    @objc func runStreamChecks() {
+        guard streamCheckReport != "Running" else { return }
+        streamCheckReport="Running"
+        DispatchQueue.global(qos:.utility).async { [weak self] in
+            let report:String
+            do { report=try runAirPlaySegmentChecks().report } catch { report="FAIL \(error.localizedDescription)" }
+            DispatchQueue.main.async { self?.streamCheckReport=report;self?.refresh() }
+        }
+    }
+    @objc func pausePlayer() { player.pause();refresh() }
+    @objc func resumePlayer() {
+        guard live != nil,player.currentItem != nil else { player.play();return }
+        player.pause()
+        live?.prepareForSeek()
+        // Pausing a live utility must not turn it into a growing delayed recording.
+        player.seek(to:.positiveInfinity) { [weak self] finished in
+            DispatchQueue.main.async { if finished { self?.player.play() };self?.refresh() }
+        }
+    }
     @objc func refresh() {
         let outputs = (try? manager.outputs()) ?? []
         let current = outputs.first { $0.id == manager.defaultOutput() }
@@ -121,15 +146,42 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let item = player.currentItem
         if let live,live.ready,!live.startedItem,let base=live.baseURL {
             live.startedItem=true
-            let item=AVPlayerItem(url:base.appendingPathComponent("live.m3u8"));item.preferredForwardBufferDuration=1
+            let item=AVPlayerItem(url:base.appendingPathComponent("live.m3u8"))
+            item.preferredForwardBufferDuration=0.35
+            item.configuredTimeOffsetFromLive=CMTime(seconds:1.05,preferredTimescale:48_000)
+            item.automaticallyPreservesTimeOffsetFromLive=true
             player.replaceCurrentItem(with:item);player.volume=1;player.play()
         }
         let http=server?.metrics
         let liveSnapshot=live?.snapshot ?? lastLive
-        replaceButton.isEnabled=live != nil && liveSnapshot["playbackClockReady"] as? Bool == true
-        replaceButton.state=liveSnapshot["originalReplaced"] as? Bool == true ? .on : .off
+        replaceButton.isEnabled=live != nil
+        replaceButton.state=liveSnapshot["mr4Enabled"] as? Bool == true ? .on : .off
         let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"defaultOutput":current?.name ?? "Unknown","defaultTransport":current.map { $0.isAirPlay ? "AirPlay" : "Local" } ?? "Unknown","halAirPlayCount":outputs.filter(\.isAirPlay).count,"halOutputNames":outputs.map(\.name),"routesDetected":detector.multipleRoutesDetected,"playerStatus":player.status.rawValue,"itemStatus":item?.status.rawValue ?? -1,"timeControlStatus":player.timeControlStatus.rawValue,"playerTime":time.isFinite ? time : -1,"waitingReason":player.reasonForWaitingToPlay?.rawValue ?? "","error":(player.error ?? item?.error)?.localizedDescription ?? liveError,"loopbackOnly":true,"audioSaved":false,"requests":http?.requests ?? 0,"bytesSent":http?.bytes ?? 0,"selectedRemoteIdentitiesAvailableInPublicAPI":false,"live":liveSnapshot,"scope":"Experimental memory-only system-audio bridge. Three acoustic outputs require listener verification."]
-        if let data=try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:reportURL,options:.atomic); details.string = String(decoding:data,as:UTF8.self) }
+        var diagnosticReport=report
+        diagnosticReport["nativeStreamChecks"]=streamCheckReport
+        if let item {
+            let recommended=item.recommendedTimeOffsetFromLive.seconds
+            diagnosticReport["recommendedLiveOffset"]=recommended.isFinite ? recommended : -1
+            diagnosticReport["seekableEnd"]=item.seekableTimeRanges.last.map { CMTimeRangeGetEnd($0.timeRangeValue).seconds } ?? -1
+            if let access=item.accessLog()?.events.last {
+                diagnosticReport["mediaRequests"]=access.numberOfMediaRequests
+                diagnosticReport["startupTime"]=access.startupTime
+                diagnosticReport["stalls"]=access.numberOfStalls
+            }
+        }
+        diagnosticReport["playerOutputDeviceExplicit"]=player.audioOutputDeviceUniqueID != nil
+        diagnosticReport["defaultOutputLatencyWritable"]=current.map { HAL.isSettable($0.id,kAudioDevicePropertyLatency,scope:kAudioObjectPropertyScopeOutput) } ?? false
+        diagnosticReport["externalVideoPlaybackFlag"]=player.isExternalPlaybackActive
+        if let timebase=item?.timebase {
+            let clock=CMTimebaseCopyUltimateSourceClock(timebase)
+            var id:AudioDeviceID=0
+            var tracking:DarwinBoolean=false
+            let result=CMAudioDeviceClockGetAudioDevice(clock,deviceUIDOut:nil,deviceIDOut:&id,trackingDefaultDeviceOut:&tracking)
+            diagnosticReport["clockDeviceQueryStatus"]=result
+            diagnosticReport["clockDeviceMatchesDefault"]=id != 0 && id == manager.defaultOutput()
+            diagnosticReport["clockDeviceName"]=(try? HAL.string(id,kAudioObjectPropertyName)) ?? "Unavailable"
+        }
+        if let data=try? JSONSerialization.data(withJSONObject:diagnosticReport,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:reportURL,options:.atomic); details.string = String(decoding:data,as:UTF8.self) }
         status.stringValue = "System output: \(current?.name ?? "Unknown") · Player: \(player.timeControlStatus == .playing ? "playing" : "stopped / buffering") · AirPlay destinations detected: \(detector.multipleRoutesDetected ? "yes" : "no")"
     }
     func applicationWillTerminate(_ notification:Notification) { stopLive();player.pause();server?.stop() }

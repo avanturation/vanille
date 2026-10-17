@@ -6,3 +6,4 @@ PASS Wrapped history retains recent frames and rejects overwritten audio
 PASS Encoder gets only complete retained frames
 PASS Playback clock snapshots do not tear during 20,000 concurrent updates
 7/7 AirPlay bridge checks passed
+SKIP Native AAC service unavailable in this shell; run Native Stream Checks in the app

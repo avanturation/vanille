@@ -9,7 +9,7 @@ mkdir -p "$STAGED_APP/Contents/MacOS" "$PROJECT_DIR/build/module-cache"
 xcrun swiftc -O -swift-version 5 -target arm64-apple-macos15.0 -module-cache-path "$PROJECT_DIR/build/module-cache" \
  "$PROJECT_DIR/Vanille/Models/Models.swift" "$PROJECT_DIR/Vanille/Models/OutputGroup.swift" "$PROJECT_DIR/Vanille/Audio/HAL.swift" "$PROJECT_DIR/Vanille/Audio/DeviceManager.swift" \
  "$PROJECT_DIR/Vanille/Audio/Equalizer.swift" "$PROJECT_DIR/Vanille/Audio/ProcessAudioManager.swift" "$PROJECT_DIR/Vanille/Utilities/Persistence.swift" \
- "$PROJECT_DIR"/Tests/AirPlayBridge/*.swift -o "$STAGED_APP/Contents/MacOS/VanilleAirPlayLab"
+ "$PROJECT_DIR"/Tests/AirPlayBridge/*.swift "$PROJECT_DIR/Tests/AirPlaySegments/SegmentChecks.swift" -o "$STAGED_APP/Contents/MacOS/VanilleAirPlayLab"
 cat > "$STAGED_APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>com.avanturation.Vanille.AirPlayLab</string>
