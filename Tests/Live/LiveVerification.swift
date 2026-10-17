@@ -7,6 +7,11 @@ import Synchronization
 final class OutputProbe {
     let rms = Atomic<Double>(0)
     let callbacks = Atomic<UInt64>(0)
+    let amplitude1000 = Atomic<Double>(0)
+    let amplitude440 = Atomic<Double>(0)
+    private var c1 = 0.0, c2 = 0.0
+    private var s11 = 0.0, s12 = 0.0, s21 = 0.0, s22 = 0.0
+    private var windowFrames = 9600, frameCount = 0
     var tap: AudioObjectID = 0
     var aggregate: AudioObjectID = 0
     var ioProc: AudioDeviceIOProcID?
@@ -19,6 +24,9 @@ final class OutputProbe {
         description.name = "Vanille verification readback"; description.isPrivate = true; description.muteBehavior = .unmuted
         try HAL.check(AudioHardwareCreateProcessTap(description,&tap),"Create verification tap")
         let uid = try HAL.string(tap,kAudioTapPropertyUID)
+        let format = try HAL.read(tap,kAudioTapPropertyFormat,default:AudioStreamBasicDescription())
+        windowFrames = Int((format.mSampleRate*0.2).rounded())
+        c1 = 2*cos(2*Double.pi*1000/format.mSampleRate); c2 = 2*cos(2*Double.pi*440/format.mSampleRate)
         let dict: [String:Any] = [kAudioAggregateDeviceNameKey:"Vanille Verification",
             kAudioAggregateDeviceUIDKey:"com.avanturation.Vanille.verification.\(UUID().uuidString)",
             kAudioAggregateDeviceIsPrivateKey:true,
@@ -37,10 +45,24 @@ final class OutputProbe {
                 samples += count
             }
             probe.rms.store(samples > 0 ? sqrt(sum/Double(samples)) : 0,ordering:.relaxed)
+            if let buffer = buffers.first, let data = buffer.mData, buffer.mNumberChannels > 0 {
+                let floats = data.assumingMemoryBound(to:Float.self), channels = Int(buffer.mNumberChannels)
+                for frame in 0..<(Int(buffer.mDataByteSize)/(4*channels)) { probe.analyze(Double(floats[frame*channels])) }
+            }
             probe.callbacks.wrappingAdd(1,ordering:.relaxed)
             return noErr
         },Unmanaged.passUnretained(self).toOpaque(),&ioProc),"Create verification reader")
         try HAL.check(AudioDeviceStart(aggregate,ioProc),"Start verification reader")
+    }
+    @inline(__always) private func analyze(_ sample:Double) {
+        let x1 = sample+c1*s11-s12; s12 = s11; s11 = x1
+        let x2 = sample+c2*s21-s22; s22 = s21; s21 = x2
+        frameCount += 1
+        if frameCount == windowFrames {
+            amplitude1000.store(2*sqrt(max(0,s11*s11+s12*s12-c1*s11*s12))/Double(windowFrames),ordering:.relaxed)
+            amplitude440.store(2*sqrt(max(0,s21*s21+s22*s22-c2*s21*s22))/Double(windowFrames),ordering:.relaxed)
+            frameCount = 0; s11 = 0; s12 = 0; s21 = 0; s22 = 0
+        }
     }
     func stop() {
         if aggregate != 0, let ioProc { AudioDeviceStop(aggregate,ioProc); AudioDeviceDestroyIOProcID(aggregate,ioProc) }
@@ -62,6 +84,8 @@ final class LiveVerification: NSObject {
     let log = NSTextView()
     var entries: [[String:Any]] = []
     var baseline = 0.0
+    var baselineA = 0.0, baselineB = 0.0
+    let secondID = "com.avanturation.Vanille.TestToneB"
     var finished = false
     var initialDefault: AudioObjectID = 0
     var initialTapCount = 0
@@ -139,7 +163,7 @@ final class LiveVerification: NSObject {
     ] }
     private func stage(_ index:Int) {
         guard !finished else { return }
-        guard index < stages.count else { finish(); return }
+        guard index < stages.count else { beginMultipleApps(); return }
         var test = state.saved; test.applications[fixtureID]!.muted = false
         switch index {
         case 0: break
@@ -171,8 +195,59 @@ final class LiveVerification: NSObject {
         append(String(format:"%@  %@ · output ratio %.4f (expected %.4f)",pass ? "PASS" : "FAIL",stages[index].0,ratio,expected))
         stage(index+1)
     }
+    private func beginMultipleApps() {
+        append("Testing independent control of two simultaneous applications…")
+        let config = NSWorkspace.OpenConfiguration(); config.activates = false
+        NSWorkspace.shared.openApplication(at:fixtureURL.deletingLastPathComponent().appendingPathComponent("VanilleTestToneB.app"),configuration:config) { _,error in
+            DispatchQueue.main.async {
+                if let error { self.append(error.localizedDescription); self.finish(); return }
+                DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.multiStage(0) }
+            }
+        }
+    }
+    private func multiStage(_ index:Int) {
+        guard !finished else { return }
+        guard index < 6 else { finish(); return }
+        state.refresh()
+        var test = state.saved
+        if index == 0 {
+            test.eq = EQSettings(); test.processingPaused = false
+            test.applications[fixtureID] = AppVolume(name:"Vanille Test Tone")
+            test.applications[secondID] = AppVolume(name:"Vanille Test Tone B")
+        }
+        if index == 1 { test.applications[fixtureID]!.volume = 0.3 }
+        if index == 2 { test.applications[secondID]!.muted = true }
+        if index == 3 {
+            test.applications[secondID]!.muted = false
+            test.eq.enabled = true; test.eq.autoHeadroom = false; test.eq.gains[5] = 6
+        }
+        if index == 4 { test.applications[fixtureID]!.bypass = true }
+        if index == 5 {
+            test.applications[fixtureID]!.bypass = false; test.applications[fixtureID]!.volume = 1
+            test.eq = EQSettings()
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier:secondID) { app.terminate() }
+        }
+        state.applyVerificationState(test)
+        DispatchQueue.main.asyncAfter(deadline:.now()+3) {
+            let a = self.probe.amplitude1000.load(ordering:.relaxed), b = self.probe.amplitude440.load(ordering:.relaxed)
+            if index == 0 { self.baselineA = a; self.baselineB = b }
+            let ratioA = self.baselineA > 1e-6 ? a/self.baselineA : -1
+            let ratioB = self.baselineB > 1e-6 ? b/self.baselineB : -1
+            let eqB = BiquadCoefficients.peak(frequency:1000,gain:6,sampleRate:self.state.output?.sampleRate ?? 48_000).magnitude(at:440,sampleRate:self.state.output?.sampleRate ?? 48_000)
+            let expectedA = [1.0,0.3,0.3,0.3*pow(10,6/20.0),0,1][index]
+            let expectedB = [1.0,1,0,eqB,eqB,0][index]
+            let names = ["Two simultaneous apps", "Independent app volume", "Independent app mute", "Global EQ over two apps", "Protected Content Bypass path", "Recovery after audio process exit"]
+            let pass = self.baselineA > 1e-5 && self.baselineB > 1e-5 && abs(ratioA-expectedA)<0.06 && abs(ratioB-expectedB)<0.06
+            self.entries.append(["test":names[index],"passed":pass,"ratioA":ratioA,"ratioB":ratioB,"expectedA":expectedA,"expectedB":expectedB,
+                "activeAppCount":self.state.metrics.appIDs.count,"engineCallbacks":self.state.metrics.callbacks])
+            self.append(String(format:"%@  %@ · A %.4f / B %.4f",pass ? "PASS" : "FAIL",names[index],ratioA,ratioB))
+            self.multiStage(index+1)
+        }
+    }
     private func finish() {
         guard !finished else { return }; finished = true; timeout?.cancel()
+        var paused = state.saved; paused.processingPaused = true
+        state.applyVerificationState(paused)
         probe.stop(); state.audio.stopSynchronously()
         // HAL publishes object removal asynchronously. Check after a control-cycle grace period.
         DispatchQueue.main.asyncAfter(deadline:.now()+1) { self.completeReport() }
@@ -185,10 +260,11 @@ final class LiveVerification: NSObject {
         entries.append(["test":"No leaked process taps","passed":tapCount == initialTapCount,"before":initialTapCount,"after":tapCount])
         entries.append(["test":"No leaked aggregate devices","passed":deviceCount == initialDeviceCount,"before":initialDeviceCount,"after":deviceCount])
         for app in NSRunningApplication.runningApplications(withBundleIdentifier:fixtureID) { app.terminate() }
+        for app in NSRunningApplication.runningApplications(withBundleIdentifier:secondID) { app.terminate() }
         state.applyVerificationState(original)
         let report: [String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,
             "output":state.output?.name ?? "None","sampleRate":state.output?.sampleRate ?? 0,
-            "measurements":entries,"allPassed":entries.count == 11 && entries.allSatisfy { $0["passed"] as? Bool == true },
+            "measurements":entries,"allPassed":entries.count == 17 && entries.allSatisfy { $0["passed"] as? Bool == true },
             "method":"Unmuted process tap independently reads Vanille HAL output. No audio samples are retained."]
         do { let data = try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]); try data.write(to:reportURL,options:.atomic)
             append("Report saved: \(reportURL.path)")

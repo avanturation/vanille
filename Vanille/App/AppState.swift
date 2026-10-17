@@ -40,7 +40,9 @@ final class AppState {
     func start() {
         for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultOutputDevice,
                          kAudioHardwarePropertyProcessObjectList, kAudioHardwarePropertyServiceRestarted] {
-            if let observation = HALObservation(HAL.system, selector, queue: .main, change: { [weak self] in self?.refresh() }) {
+            if let observation = HALObservation(HAL.system, selector, queue: .main, change: { [weak self] in
+                self?.refresh(retry: selector == kAudioHardwarePropertyServiceRestarted)
+            }) {
                 observations.append(observation)
             }
         }
@@ -57,6 +59,9 @@ final class AppState {
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() }
         RunLoop.main.add(timer, forMode: .common); self.timer = timer
         refresh()
+        if let uid = saved.selectedOutputUID, outputs.contains(where: { $0.uid == uid }), output?.uid != uid {
+            selectOutput(uid)
+        }
     }
     @discardableResult func observe(_ callback: @escaping () -> Void) -> UUID {
         let token = UUID(); subscribers[token] = callback; return token

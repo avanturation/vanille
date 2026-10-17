@@ -60,6 +60,7 @@ final class ApplicationRow: NSView {
         else if let output = state.output, !application.outputDevices.contains(output.id) {
             detailLabel.stringValue = "Original audio · Uses another output"
         } else if state.metrics.error != nil { detailLabel.stringValue = "Original audio · Processing unavailable" }
+        else if state.metrics.originalAudioIDs.contains(application.id) { detailLabel.stringValue = "Original audio · Audio cannot be processed" }
         else { detailLabel.stringValue = "Original audio · Waiting for processing" }
     }
     private func showMenu() {

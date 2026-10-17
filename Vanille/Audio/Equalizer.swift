@@ -41,6 +41,9 @@ final class ParameterMailbox: @unchecked Sendable {
     private let middle = Atomic<Int>(1)
     private var back = 2 // producer only
     private var front = 0 // consumer only
+    private var cachedEQ: EQSettings?
+    private var cachedRate = 0.0
+    private var cachedEQValues = Array(repeating: 0.0, count: 52) // producer only
 
     init() {
         slots = .allocate(capacity: Self.width * 3)
@@ -57,7 +60,15 @@ final class ParameterMailbox: @unchecked Sendable {
     func publish(gains: [Float], eq: EQSettings, sampleRate: Double) {
         let pointer = slots.advanced(by: back * Self.width)
         for i in 0..<Self.maxSources { pointer[i] = i < gains.count ? Double(gains[i]) : 1 }
-        pointer[Self.eqMixIndex] = eq.enabled ? 1 : 0
+        if cachedEQ != eq || cachedRate != sampleRate { cacheEQ(eq, sampleRate: sampleRate) }
+        cachedEQValues.withUnsafeBufferPointer { source in
+            pointer.advanced(by: Self.eqMixIndex).update(from: source.baseAddress!, count: 52)
+        }
+        back = middle.exchange(back | 4, ordering: .acquiringAndReleasing) & 3
+    }
+    private func cacheEQ(_ eq: EQSettings, sampleRate: Double) {
+        cachedEQ = eq; cachedRate = sampleRate
+        cachedEQValues[0] = eq.enabled ? 1 : 0
         // Headroom measures the combined response, including overlap between adjacent bands.
         var maximumDB = 0.0
         let coefficients = zip(EQSettings.frequencies, eq.gains).map {
@@ -70,13 +81,12 @@ final class ParameterMailbox: @unchecked Sendable {
                 maximumDB = max(maximumDB, 20 * log10(max(response, 1e-12)))
             }
         }
-        pointer[Self.preampIndex] = pow(10, (Double(eq.preamp) - maximumDB) / 20)
+        cachedEQValues[1] = pow(10, (Double(eq.preamp) - maximumDB) / 20)
         for i in 0..<10 {
-            let c = coefficients[i], offset = Self.coefficientOffset + i*5
-            pointer[offset] = c.b0; pointer[offset+1] = c.b1; pointer[offset+2] = c.b2
-            pointer[offset+3] = c.a1; pointer[offset+4] = c.a2
+            let c = coefficients[i], offset = 2 + i*5
+            cachedEQValues[offset] = c.b0; cachedEQValues[offset+1] = c.b1; cachedEQValues[offset+2] = c.b2
+            cachedEQValues[offset+3] = c.a1; cachedEQValues[offset+4] = c.a2
         }
-        back = middle.exchange(back | 4, ordering: .acquiringAndReleasing) & 3
     }
     @inline(__always) func consume() -> UnsafePointer<Double> {
         if middle.load(ordering: .acquiring) & 4 != 0 {

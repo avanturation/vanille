@@ -7,6 +7,13 @@ private struct TapHandle {
     let appID: String
     let object: AudioObjectID
     let uid: String
+    let description: CATapDescription
+}
+
+final class SourceSignal: @unchecked Sendable {
+    let peak = Atomic<Double>(0)
+    let ready: Atomic<Bool>
+    init(ready: Bool) { self.ready = Atomic(ready) }
 }
 
 struct RenderRoute {
@@ -25,6 +32,10 @@ final class RenderContext: @unchecked Sendable {
     let mailbox = ParameterMailbox()
     let dsp: StereoDSP
     let routes: [RenderRoute]
+    let signals: [SourceSignal]
+    let suppressOutput = Atomic<Bool>(false)
+    private let sourcePeaks: UnsafeMutablePointer<Double>
+    private let sourceReady: UnsafeMutablePointer<Bool>
     private let inputPointers: UnsafeMutablePointer<ChannelPointer>
     private let outputPointers: UnsafeMutablePointer<ChannelPointer>
     let callbacks = Atomic<UInt64>(0)
@@ -35,8 +46,13 @@ final class RenderContext: @unchecked Sendable {
     let clipped = Atomic<UInt64>(0)
     static let maximumFrames = 16_384
 
-    init(sampleRate: Double, routes: [RenderRoute]) {
+    init(sampleRate: Double, routes: [RenderRoute], initiallyReady: Bool = true) {
         self.routes = routes
+        signals = routes.map { _ in SourceSignal(ready: initiallyReady) }
+        sourcePeaks = .allocate(capacity: max(1,routes.count))
+        sourcePeaks.initialize(repeating: 0, count: max(1,routes.count))
+        sourceReady = .allocate(capacity: max(1,routes.count))
+        sourceReady.initialize(repeating: initiallyReady, count: max(1,routes.count))
         dsp = StereoDSP(sampleRate: sampleRate, mailbox: mailbox)
         inputPointers = .allocate(capacity: max(2, routes.count*2))
         inputPointers.initialize(repeating: ChannelPointer(), count: max(2, routes.count*2))
@@ -44,6 +60,8 @@ final class RenderContext: @unchecked Sendable {
         outputPointers.initialize(repeating: ChannelPointer(), count: 2)
     }
     deinit {
+        sourcePeaks.deinitialize(count:max(1,routes.count)); sourcePeaks.deallocate()
+        sourceReady.deinitialize(count:max(1,routes.count)); sourceReady.deallocate()
         inputPointers.deinitialize(count: max(2,routes.count*2)); inputPointers.deallocate()
         outputPointers.deinitialize(count: 2); outputPointers.deallocate()
     }
@@ -63,6 +81,7 @@ final class RenderContext: @unchecked Sendable {
         let inputs = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
         let outputs = UnsafeMutableAudioBufferListPointer(output)
         for buffer in outputs { if let data = buffer.mData { memset(data, 0, Int(buffer.mDataByteSize)) } }
+        if suppressOutput.load(ordering: .relaxed) { return }
         outputPointers[0] = channel(0, in: outputs); outputPointers[1] = channel(1, in: outputs)
         guard let leftOut = outputPointers[0].data, let rightOut = outputPointers[1].data else {
             fault.store(true, ordering: .relaxed); return
@@ -70,6 +89,8 @@ final class RenderContext: @unchecked Sendable {
         let frames = min(outputPointers[0].frames, outputPointers[1].frames)
         guard frames > 0, frames <= Self.maximumFrames else { fault.store(true, ordering: .relaxed); return }
         for source in routes.indices {
+            sourcePeaks[source] = 0
+            sourceReady[source] = signals[source].ready.load(ordering: .acquiring)
             inputPointers[source*2] = channel(routes[source].left, in: inputs)
             inputPointers[source*2+1] = channel(routes[source].right, in: inputs)
             if inputPointers[source*2].frames < frames || inputPointers[source*2+1].frames < frames {
@@ -86,7 +107,8 @@ final class RenderContext: @unchecked Sendable {
                 let a = Double(l.data![frame*l.stride]), b = Double(r.data![frame*r.stride])
                 if !a.isFinite || !b.isFinite { fault.store(true, ordering: .relaxed); continue }
                 inputEnergy += (a*a+b*b)*0.5
-                left += a*gain; right += b*gain
+                sourcePeaks[source] = max(sourcePeaks[source],max(abs(a),abs(b)))
+                if sourceReady[source] { left += a*gain; right += b*gain }
             }
             let result = dsp.process(left: left, right: right, parameters: p)
             leftOut[frame*outputPointers[0].stride] = Float(result.0)
@@ -94,6 +116,7 @@ final class RenderContext: @unchecked Sendable {
             outputEnergy += (result.0*result.0+result.1*result.1)*0.5
         }
         inputRMS.store(sqrt(inputEnergy / Double(frames)), ordering: .relaxed)
+        for source in routes.indices { signals[source].peak.store(sourcePeaks[source],ordering:.relaxed) }
         outputRMS.store(sqrt(outputEnergy / Double(frames)), ordering: .relaxed)
         sampleFrames.wrappingAdd(UInt64(frames), ordering: .relaxed)
         clipped.store(dsp.limitedSamples, ordering: .relaxed)
@@ -115,6 +138,7 @@ struct EngineMetrics {
     var inputRMS: Double = 0
     var outputRMS: Double = 0
     var limitedSamples: UInt64 = 0
+    var originalAudioIDs: Set<String> = []
     var error: String?
 }
 
@@ -130,6 +154,7 @@ final class AudioEngine {
     private var lastCallbackAt = Date.distantPast
     private var observations: [HALObservation] = []
     private let needsRebuild = Atomic<Bool>(false)
+    private var activationFailures: Set<Int> = []
     private(set) var sampleRate = 48_000.0
     var appIDs: [String] { taps.map(\.appID) }
 
@@ -149,13 +174,15 @@ final class AudioEngine {
                 description.name = "Vanille · \(app.name)"
                 description.isPrivate = true
                 description.deviceUID = device.uid
-                description.muteBehavior = .mutedWhenTapped
+                // Verify that readable audio exists before replacing the source's output.
+                // Denied capture and initially uncapturable content remain on their original path.
+                description.muteBehavior = .unmuted
                 var tap: AudioObjectID = 0
                 try HAL.check(AudioHardwareCreateProcessTap(description, &tap), "Allow system audio access to process \(app.name)")
                 let uid: String
                 do { uid = try HAL.string(tap, kAudioTapPropertyUID) }
                 catch { AudioHardwareDestroyProcessTap(tap); throw error }
-                taps.append(TapHandle(appID: app.id, object: tap, uid: uid))
+                taps.append(TapHandle(appID: app.id, object: tap, uid: uid, description: description))
                 let format = try HAL.read(tap, kAudioTapPropertyFormat, default: AudioStreamBasicDescription())
                 guard Self.supports(format), format.mChannelsPerFrame == 2 else {
                     throw AudioFailure(operation: "Unsupported tap format for \(app.name)", status: kAudioDeviceUnsupportedFormatError)
@@ -209,7 +236,7 @@ final class AudioEngine {
                 outputChannels += f.mChannelsPerFrame
             }
             guard outputChannels == 2 else { throw AudioFailure(operation: "Stereo output unavailable", status: kAudioDeviceUnsupportedFormatError) }
-            let renderContext = RenderContext(sampleRate: sampleRate, routes: routes)
+            let renderContext = RenderContext(sampleRate: sampleRate, routes: routes, initiallyReady: false)
             context = renderContext
             update(settings)
             try HAL.check(AudioDeviceCreateIOProcID(aggregate, vanilleIOProc,
@@ -261,14 +288,33 @@ final class AudioEngine {
     }
     func metrics() -> EngineMetrics {
         guard let context else { return EngineMetrics() }
+        for index in taps.indices where !context.signals[index].ready.load(ordering: .relaxed)
+            && !activationFailures.contains(index) && context.signals[index].peak.load(ordering: .relaxed) > 1e-7 {
+            let description = taps[index].description
+            description.muteBehavior = .mutedWhenTapped
+            do {
+                try HAL.write(taps[index].object, kAudioTapPropertyDescription, value: description)
+                context.signals[index].ready.store(true,ordering:.releasing)
+            } catch {
+                description.muteBehavior = .unmuted
+                activationFailures.insert(index)
+                NSLog("Vanille kept original audio: %@",error.localizedDescription)
+            }
+        }
+        let active = taps.indices.filter { context.signals[$0].ready.load(ordering:.relaxed) }.map { taps[$0].appID }
         let count = context.callbacks.load(ordering: .relaxed)
         if count != lastCallbackCount { lastCallbackAt = Date(); lastCallbackCount = count }
         let timedOut = Date().timeIntervalSince(lastCallbackAt) > 1.5
         let invalid = context.fault.load(ordering: .relaxed) || needsRebuild.load(ordering: .relaxed)
-        var result = EngineMetrics(appIDs: appIDs, running: count > 0, callbacks: count,
+        var result = EngineMetrics(appIDs: active, running: count > 0 && !active.isEmpty, callbacks: count,
             sampleFrames: context.sampleFrames.load(ordering: .relaxed),
             inputRMS: context.inputRMS.load(ordering: .relaxed), outputRMS: context.outputRMS.load(ordering: .relaxed),
             limitedSamples: context.clipped.load(ordering: .relaxed))
+        if Date().timeIntervalSince(startedAt) > 2 { result.originalAudioIDs = Set(appIDs).subtracting(active) }
+        if active.isEmpty && Date().timeIntervalSince(startedAt) > 3 {
+            result.error = "No processable audio was received. Original audio is playing. Check audio permission or use Protected Content Bypass."
+            stop(); return result
+        }
         if invalid || timedOut {
             result.running = false
             result.appIDs = []
@@ -280,14 +326,41 @@ final class AudioEngine {
     func stop() {
         observations.removeAll()
         // Stop the reader first: mutedWhenTapped restores the original output before teardown.
+        var callbackDestroyed = true
         if aggregate != 0, let ioProc {
-            AudioDeviceStop(aggregate, ioProc)
-            AudioDeviceDestroyIOProcID(aggregate, ioProc)
+            let status = AudioDeviceStop(aggregate, ioProc)
+            if status != noErr {
+                context?.suppressOutput.store(true,ordering:.relaxed)
+                for tap in taps {
+                    tap.description.muteBehavior = .unmuted
+                    try? HAL.write(tap.object,kAudioTapPropertyDescription,value:tap.description)
+                }
+                NSLog("Vanille audio stop status: %d",status)
+            }
+            let destroyed = AudioDeviceDestroyIOProcID(aggregate, ioProc)
+            callbackDestroyed = destroyed == noErr
+            if destroyed != noErr { NSLog("Vanille callback teardown status: %d",destroyed) }
         }
         ioProc = nil
-        if aggregate != 0 { AudioHardwareDestroyAggregateDevice(aggregate); aggregate = 0 }
-        for tap in taps { AudioHardwareDestroyProcessTap(tap.object) }
+        if aggregate != 0 {
+            let destroyed = AudioHardwareDestroyAggregateDevice(aggregate)
+            if destroyed != noErr {
+                NSLog("Vanille aggregate teardown status: %d",destroyed)
+                if !callbackDestroyed, let context {
+                    // If HAL refuses both unregister operations, retain storage until process exit
+                    // rather than risk a callback using freed memory. Suppress all output first.
+                    context.suppressOutput.store(true,ordering:.relaxed)
+                    _ = Unmanaged.passRetained(context)
+                }
+            }
+            aggregate = 0
+        }
+        for tap in taps {
+            let status = AudioHardwareDestroyProcessTap(tap.object)
+            if status != noErr { NSLog("Vanille tap teardown status: %d",status) }
+        }
         taps.removeAll()
+        activationFailures.removeAll()
         // IOProc has been unregistered, so all realtime storage can now be reclaimed.
         context = nil
     }

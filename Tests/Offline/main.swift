@@ -77,6 +77,13 @@ check(!context.fault.load(ordering:.relaxed),"Valid buffers produce no realtime 
 inList[0].mDataByteSize = 4
 context.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outList.unsafeMutablePointer)
 check(context.fault.load(ordering:.relaxed) && l[0] == 0,"Truncated buffers fail safely with zero output")
+inList[0].mDataByteSize = UInt32(frames*8)
+let confirming = RenderContext(sampleRate:48_000,routes:[RenderRoute(left:0,right:1),RenderRoute(left:2,right:3)],initiallyReady:false)
+confirming.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outList.unsafeMutablePointer)
+check(l[frames-1] == 0 && r[frames-1] == 0 && confirming.signals[0].peak.load(ordering:.relaxed)>0,"Unconfirmed capture never replaces original output")
+confirming.signals[0].ready.store(true,ordering:.releasing)
+confirming.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outList.unsafeMutablePointer)
+check(abs(l[frames-1]-0.1)<1e-5 && abs(r[frames-1]-0.1)<1e-5,"Only confirmed sources enter the output mix")
 a.deallocate(); b.deallocate(); c.deallocate(); l.deallocate(); r.deallocate(); inList.unsafeMutablePointer.deallocate(); outList.unsafeMutablePointer.deallocate()
 
 let temp = FileManager.default.temporaryDirectory.appendingPathComponent("VanilleTests-\(UUID().uuidString)/settings.json")

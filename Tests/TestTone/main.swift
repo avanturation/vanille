@@ -14,8 +14,11 @@ final class ToneDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     let status = NSTextField(labelWithString:"A quiet 1 kHz test tone is playing (−46 dBFS).")
     func applicationDidFinishLaunching(_ notification:Notification) {
+        let frequency = (Bundle.main.object(forInfoDictionaryKey:"VanilleTestFrequency") as? Double) ?? 1000
+        tone.frequency.store(frequency,ordering:.relaxed)
+        status.stringValue = "A quiet \(Int(frequency)) Hz test tone is playing (−46 dBFS)."
         window = NSWindow(contentRect:NSRect(x:0,y:0,width:400,height:170),styleMask:[.titled,.closable],backing:.buffered,defer:false)
-        window.title = "Vanille Test Tone"; window.isReleasedWhenClosed = false
+        window.title = (Bundle.main.object(forInfoDictionaryKey:"CFBundleName") as? String) ?? "Vanille Test Tone"; window.isReleasedWhenClosed = false
         let stop = NSButton(title:"Stop & Quit",target:self,action:#selector(quit)); stop.bezelStyle = .rounded
         let stack = NSStackView(views:[status,stop]); stack.orientation = .vertical; stack.spacing = 18; stack.translatesAutoresizingMaskIntoConstraints = false
         window.contentView!.addSubview(stack)

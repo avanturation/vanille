@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle:"Settings…",action:#selector(showSettings),keyEquivalent:",").target = self
         #if VANILLE_DIAGNOSTICS
         appMenu.addItem(withTitle:"Run Audio Verification…",action:#selector(runVerification),keyEquivalent:"t").target = self
+        appMenu.addItem(withTitle:"Toggle Test Appearance",action:#selector(toggleTestAppearance),keyEquivalent:"d").target = self
         #endif
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle:"Quit Vanille",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
@@ -76,6 +77,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func runVerification() {
         popover.performClose(nil)
         verification = LiveVerification(state: state); verification?.run()
+    }
+    @objc private func toggleTestAppearance() {
+        NSApp.appearance = NSApp.appearance?.name == .darkAqua ? nil : NSAppearance(named:.darkAqua)
     }
     #endif
     @objc func showEqualizer() {
