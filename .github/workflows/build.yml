@@ -1,0 +1,32 @@
+name: Native macOS Build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Environment
+        run: |
+          sw_vers
+          uname -m
+          xcodebuild -version
+          swift --version
+      - name: Xcode project
+        run: xcodebuild -project Vanille.xcodeproj -scheme Vanille -configuration Release -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
+      - name: DSP and buffer safety checks
+        run: ./Scripts/test.sh
+      - name: Standalone app bundle
+        run: ./Scripts/build.sh
