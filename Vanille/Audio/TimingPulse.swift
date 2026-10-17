@@ -12,7 +12,7 @@ final class TimingPulse {
         if gain==0 { position = 0; return 0 }
         let t = Double(position)/sampleRate
         let envelope = max(0,min(1,t/0.005,(0.1-t)/0.005))
-        let signal = 0.03*gain*envelope*sin(2*Double.pi*880*t)
+        let signal = 0.03*gain*envelope*sin(2*Double.pi*1000*t)
         position += 1; if position>=Int(sampleRate*4) { position = 0 }
         return signal
     }

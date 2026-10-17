@@ -63,13 +63,17 @@ final class ParameterMailbox: @unchecked Sendable {
 
     func publish(gains: [Float], eq: EQSettings, sampleRate: Double, outputs: [DeviceRoute] = [],timingSound:Bool = false) {
         let pointer = slots.advanced(by: back * Self.width)
-        for i in 0..<Self.maxSources { pointer[i] = i < gains.count ? Double(gains[i]) : 1 }
+        for i in 0..<Self.maxSources {
+            let gain = i < gains.count ? gains[i] : 1
+            pointer[i] = gain.isFinite ? Double(min(1,max(0,gain))) : 1
+        }
         if cachedEQ != eq || cachedRate != sampleRate { cacheEQ(eq, sampleRate: sampleRate) }
         cachedEQValues.withUnsafeBufferPointer { source in
             pointer.advanced(by: Self.eqMixIndex).update(from: source.baseAddress!, count: 52)
         }
         for i in 0..<Self.maxOutputs {
-            let output = i < outputs.count ? outputs[i] : nil
+            var output = i < outputs.count ? outputs[i] : nil
+            output?.sanitize()
             pointer[Self.outputOffset+i*2] = output.map { $0.enabled && !$0.muted ? Double($0.volume) : 0 } ?? 1
             pointer[Self.outputOffset+i*2+1] = output.map { $0.delayMS*sampleRate/1000 } ?? 0
         }

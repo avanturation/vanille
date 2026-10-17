@@ -105,6 +105,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if groups == nil { groups = OutputGroupsWindowController(state:state) }
         groups?.showWindow(nil); NSApp.activate(ignoringOtherApps:true); groups?.window?.makeKeyAndOrderFront(nil)
     }
+    func applicationShouldTerminate(_ sender:NSApplication) -> NSApplication.TerminateReply {
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        return .terminateNow
+    }
     func applicationWillTerminate(_ notification:Notification) { state.shutdown() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool) -> Bool { showPopover(); return true }

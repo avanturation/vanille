@@ -1,0 +1,206 @@
+{
+  "allPassed": true,
+  "date": "2026-10-17T19:03:02Z",
+  "measurements": [
+    {
+      "combinedAmplitude": 0.0009499991314458484,
+      "engineCallbacks": 618,
+      "engineInputRMS": 0,
+      "engineOutputRMS": 0,
+      "expected": [
+        1,
+        1
+      ],
+      "outputCount": 2,
+      "passed": true,
+      "probeCallbacks": [
+        498,
+        482
+      ],
+      "ratios": [
+        1,
+        1
+      ],
+      "readbackAmplitudes": [
+        0.0004749955302949156,
+        0.0004749996773165272
+      ],
+      "relativeDelayMS": 0,
+      "test": "Two hardware streams carry the same signal"
+    },
+    {
+      "combinedAmplitude": 0.00061749939346772,
+      "engineCallbacks": 1087,
+      "engineInputRMS": 0,
+      "engineOutputRMS": 0,
+      "expected": [
+        0.3,
+        1
+      ],
+      "outputCount": 2,
+      "passed": true,
+      "probeCallbacks": [
+        966,
+        950
+      ],
+      "ratios": [
+        0.3000001184636599,
+        0.9999999256085063
+      ],
+      "readbackAmplitudes": [
+        0.00014249871535818365,
+        0.00047499964198059166
+      ],
+      "relativeDelayMS": -0.03825034946203232,
+      "test": "Independent wired output volume"
+    },
+    {
+      "combinedAmplitude": 0.00014249990820353322,
+      "engineCallbacks": 1556,
+      "engineInputRMS": 0,
+      "engineOutputRMS": 0,
+      "expected": [
+        0.3,
+        0
+      ],
+      "outputCount": 2,
+      "passed": true,
+      "probeCallbacks": [
+        1436,
+        1420
+      ],
+      "ratios": [
+        0.3000003070491866,
+        0
+      ],
+      "readbackAmplitudes": [
+        0.0001424988049354659,
+        0
+      ],
+      "relativeDelayMS": -0.07508369162678719,
+      "test": "Independent AirPlay output mute"
+    },
+    {
+      "combinedAmplitude": 0.0009499958232783895,
+      "engineCallbacks": 2024,
+      "engineInputRMS": 0,
+      "engineOutputRMS": 0,
+      "expected": [
+        1,
+        1
+      ],
+      "outputCount": 2,
+      "passed": true,
+      "probeCallbacks": [
+        1904,
+        1888
+      ],
+      "ratios": [
+        1.0000013067998184,
+        1.0000000205168174
+      ],
+      "readbackAmplitudes": [
+        0.00047499615101898827,
+        0.0004749996870620088
+      ],
+      "relativeDelayMS": 119.891541544348,
+      "test": "120 ms output delay"
+    },
+    {
+      "combinedAmplitude": 0.0018954904457285095,
+      "engineCallbacks": 2493,
+      "engineInputRMS": 0,
+      "engineOutputRMS": 0,
+      "expected": [
+        1.9952623149688795,
+        1.9952623149688795
+      ],
+      "outputCount": 2,
+      "passed": true,
+      "probeCallbacks": [
+        2373,
+        2357
+      ],
+      "ratios": [
+        1.9952654823791585,
+        1.9952619739812565
+      ],
+      "readbackAmplitudes": [
+        0.0009477421858818289,
+        0.0009477487938030338
+      ],
+      "relativeDelayMS": 119.8567496612668,
+      "test": "Global EQ on both output streams"
+    },
+    {
+      "combinedAmplitude": 0,
+      "engineCallbacks": 0,
+      "engineInputRMS": 0,
+      "engineOutputRMS": 0,
+      "expected": [
+        0,
+        0
+      ],
+      "outputCount": 0,
+      "passed": true,
+      "probeCallbacks": [
+        2848,
+        2832
+      ],
+      "ratios": [
+        0,
+        0
+      ],
+      "readbackAmplitudes": [
+        0,
+        0
+      ],
+      "relativeDelayMS": 119.8567496612668,
+      "test": "Pause restores original path"
+    },
+    {
+      "amplitudes": [
+        0.0007124999890997046,
+        0.0007125043718568712
+      ],
+      "capturedApplications": 0,
+      "passed": true,
+      "relativeDelayMS": 0,
+      "test": "Built-in timing sound without application capture"
+    },
+    {
+      "amplitudes": [
+        0.0007124999890997046,
+        0.0007125042753561464
+      ],
+      "capturedApplications": 0,
+      "passed": true,
+      "relativeDelayMS": 399.9437913298607,
+      "test": "Timing sound applies 400 ms per-device offset"
+    },
+    {
+      "amplitudes": [
+        0,
+        0
+      ],
+      "capturedApplications": 0,
+      "passed": true,
+      "relativeDelayMS": 399.9437913298607,
+      "test": "Timing sound stops safely"
+    },
+    {
+      "passed": true,
+      "test": "Default system output unchanged"
+    },
+    {
+      "passed": true,
+      "test": "No leaked tap or aggregate"
+    }
+  ],
+  "outputs": [
+    "CalDigit TS4 Audio - Rear",
+    "AirPlay"
+  ],
+  "scope": "Two actual HAL output streams only. No microphone or acoustic synchronization measurement; two independent HomePod pairs remain unavailable.",
+  "system": "Version 27.0 (Build 26A428)"
+}

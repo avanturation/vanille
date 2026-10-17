@@ -59,6 +59,7 @@ final class EqualizerWindowController: NSWindowController {
         autoHeadroom.toolTip = "Reduces gain to allow for the combined EQ boost. Peak protection remains active."
         root.addArrangedSubview(autoHeadroom)
         scope.maximumNumberOfLines = 2; scope.lineBreakMode = .byWordWrapping
+        scope.preferredMaxLayoutWidth = 490; scope.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         root.addArrangedSubview(scope)
         for child in root.arrangedSubviews { child.widthAnchor.constraint(equalTo:root.widthAnchor).isActive = true }
     }

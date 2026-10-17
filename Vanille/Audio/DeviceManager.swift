@@ -7,12 +7,28 @@ final class DeviceManager {
             guard let uid = try? HAL.string(id, kAudioDevicePropertyDeviceUID), !uid.hasPrefix("com.avanturation.Vanille."),
                   let channels = try? HAL.channelCount(id, scope: kAudioObjectPropertyScopeOutput), channels > 0,
                   (try? HAL.read(id, kAudioDevicePropertyDeviceIsAlive, default: UInt32(0))) == 1 else { return nil }
+            let rate = (try? HAL.read(id,kAudioDevicePropertyNominalSampleRate,default:Double(0))) ?? 0
             return OutputDevice(id: id, uid: uid,
                 name: (try? HAL.string(id, kAudioObjectPropertyName)) ?? "Audio Output",
                 channels: channels,
-                sampleRate: (try? HAL.read(id, kAudioDevicePropertyNominalSampleRate, default: Double(0))) ?? 0,
-                transport: (try? HAL.read(id, kAudioDevicePropertyTransportType, default: UInt32(0))) ?? 0)
+                sampleRate: rate,
+                transport: (try? HAL.read(id, kAudioDevicePropertyTransportType, default: UInt32(0))) ?? 0,
+                reportedLatencyMS:reportedLatency(id,sampleRate:rate))
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+    private func reportedLatency(_ id:AudioObjectID,sampleRate:Double) -> Double? {
+        guard sampleRate>0,
+              let hardware = try? HAL.read(id,kAudioDevicePropertyLatency,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput),
+              let safety = try? HAL.read(id,kAudioDevicePropertySafetyOffset,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput),
+              let streams = try? HAL.objects(id,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeOutput), !streams.isEmpty else { return nil }
+        var streamSeconds = 0.0
+        for stream in streams {
+            guard let latency = try? HAL.read(stream,kAudioStreamPropertyLatency,default:UInt32(0)) else { return nil }
+            let format = try? HAL.read(stream,kAudioStreamPropertyVirtualFormat,default:AudioStreamBasicDescription())
+            let rate = (format?.mSampleRate ?? 0)>0 ? format!.mSampleRate : sampleRate
+            streamSeconds = max(streamSeconds,Double(latency)/rate)
+        }
+        return (Double(hardware)+Double(safety))/sampleRate*1000 + streamSeconds*1000
     }
     func defaultOutput() -> AudioObjectID {
         (try? HAL.read(HAL.system, kAudioHardwarePropertyDefaultOutputDevice, default: AudioObjectID(0))) ?? 0

@@ -138,6 +138,9 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
     private let note = UI.text("",size:11,color:.secondaryLabelColor)
     private var signature = ""
     private var timingButton:ActionButton!
+    private var useButton:ActionButton!
+    private var matchButton:ActionButton!
+    private let activeStatus = UI.text("",size:11,color:.secondaryLabelColor)
     init(state:AppState) {
         self.state = state; selectedID = state.saved.selectedGroupID ?? state.saved.outputGroups.first?.id
         let w = NSWindow(contentRect:NSRect(x:0,y:0,width:620,height:580),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
@@ -148,12 +151,13 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
     private func build() {
         let host = NSView(); window?.contentView = host; let root = UI.vertical(spacing:12); UI.pin(root,to:host,inset:18)
         picker = ActionPopUp(label:"Output group") { [weak self] id in self?.selectedID = id; self?.signature = ""; self?.update() }
-        let use = ActionButton("Use Group") { [weak self] in self?.state.selectGroup(self?.selectedID) }
+        useButton = ActionButton("Use Group") { [weak self] in self?.state.selectGroup(self?.selectedID) }
         let rename = ActionButton("Rename…") { [weak self] in self?.rename() }
         let add = ActionButton("New…") { [weak self] in self?.newGroup() }
         let delete = ActionButton("Delete") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.deleteGroup(id); self.selectedID = nil; self.update() }
-        root.addArrangedSubview(UI.horizontal([picker,use,rename,add,delete]))
-        let intro = UI.text("Copy stereo audio to each enabled output. Add delay to the speaker you hear first. Timing is adjusted by listening, not measured automatically.",size:12,color:.secondaryLabelColor)
+        root.addArrangedSubview(UI.horizontal([picker,useButton,rename,add,delete]))
+        root.addArrangedSubview(activeStatus)
+        let intro = UI.text("Copy stereo audio to each enabled output. Match Device Timing sets an initial delay; the timing sound helps you check the result.",size:12,color:.secondaryLabelColor)
         intro.maximumNumberOfLines = 3; intro.lineBreakMode = .byWordWrapping; intro.preferredMaxLayoutWidth = 584
         intro.setContentCompressionResistancePriority(.defaultLow,for:.horizontal); root.addArrangedSubview(intro)
         let scroll = NSScrollView(); scroll.drawsBackground = false; scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true
@@ -164,11 +168,13 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
         scroll.heightAnchor.constraint(greaterThanOrEqualToConstant:200).isActive = true
         root.addArrangedSubview(scroll)
         timingButton = ActionButton("Play Timing Sound") { [weak self] in guard let self else { return }; self.state.toggleTimingSound(groupID:self.selectedID) }
+        matchButton = ActionButton("Match Device Timing") { [weak self] in guard let self else { return }; self.state.matchDeviceTiming(groupID:self.selectedID) }
+        matchButton.toolTip = "Sets initial delays from the timing reported by macOS. This does not measure the sound in your room."
         root.addArrangedSubview(UI.horizontal([
-            ActionButton("Add Output") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.addGroupDevice(id) },timingButton,NSView(),
+            ActionButton("Add Output") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.addGroupDevice(id) },timingButton,matchButton,NSView(),
             ActionButton("Sound Settings…") { UI.openSoundSettings() }
         ]))
-        let hint = UI.text("Pause other audio, then play the timing sound. Increase Additional Delay on the speaker that plays first until the two pulses sound like one. The sound stops after 90 seconds.",size:11,color:.secondaryLabelColor)
+        let hint = UI.text("Start with Match Device Timing, then play the timing sound. If two pulses are still separate, add delay to the speaker you hear first. The sound stops after 90 seconds.",size:11,color:.secondaryLabelColor)
         hint.maximumNumberOfLines = 3; hint.lineBreakMode = .byWordWrapping; hint.preferredMaxLayoutWidth = 584
         hint.setContentCompressionResistancePriority(.defaultLow,for:.horizontal); root.addArrangedSubview(hint)
         note.maximumNumberOfLines = 4; note.lineBreakMode = .byWordWrapping; note.preferredMaxLayoutWidth = 584
@@ -178,8 +184,15 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
     private func update() {
         if !state.saved.outputGroups.contains(where: { $0.id == selectedID }) { selectedID = state.saved.outputGroups.first?.id }
         picker.setItems(state.saved.outputGroups.map { ($0.name,$0.id) },selected:selectedID)
+        let active = selectedID != nil && state.saved.selectedGroupID == selectedID
+        useButton.title = active ? "In Use" : "Use Group"; useButton.isEnabled = selectedID != nil && !active
+        activeStatus.stringValue = active ? (state.saved.processingPaused ? "This group is selected. Start processing to apply it." : "This group is in use.") : "Editing this group. Choose Use Group to apply its settings."
         timingButton.title = state.saved.timingSound ? "Stop Timing Sound" : "Play Timing Sound"
         let group = state.saved.outputGroups.first { $0.id == selectedID }
+        matchButton.isEnabled = (group?.devices.filter { route in route.enabled && state.outputs.contains { $0.uid == route.id } }.count ?? 0)>=2
+        timingButton.isEnabled = state.saved.timingSound || (group?.devices.contains(where: { route in
+            route.enabled && state.outputs.contains(where: { $0.uid == route.id })
+        }) ?? false)
         let newSignature = (group?.id ?? "") + (group?.devices.map { $0.id+$0.name }.joined(separator:";") ?? "")
         if signature != newSignature {
             signature = newSignature

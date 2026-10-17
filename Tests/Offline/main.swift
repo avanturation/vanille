@@ -25,6 +25,8 @@ func rmsTest(frequency: Double = 1000, sourceGain: Float = 1, eq: EQSettings = E
 check(abs(rmsTest()-1) < 0.00001,"EQ bypass is unity")
 check(abs(rmsTest(sourceGain:0.7)-0.7) < 0.00001,"70% gain changes actual PCM amplitude")
 check(rmsTest(sourceGain:0) < 1e-9,"Mute produces zero PCM after gain ramp")
+check(abs(rmsTest(sourceGain:2)-1)<1e-5,"Restored out-of-range app levels cannot amplify above 100 percent")
+check(rmsTest(sourceGain:-1)<1e-9,"Invalid negative gain cannot invert or amplify audio")
 var eq = EQSettings(enabled:true)
 eq.autoHeadroom = false; eq.gains[5] = 6
 check(abs(20*log10(rmsTest(eq:eq))-6) < 0.02,"1 kHz +6 dB peaking filter")
@@ -131,6 +133,9 @@ let delayedP = routeMailbox.consume(); mixer.beginBlock(delayedP)
 var last = 0.1, delta = 0.0
 for _ in 0..<1_500 { mixer.push(left:0.1,right:0.1); let signal = mixer.read(destination:0,parameters:delayedP); _ = mixer.read(destination:1,parameters:delayedP); delta = max(delta,abs(signal.0-last)); last = signal.0; mixer.advance() }
 check(delta<=0.1/1440+1e-9 && last==0,"Delay changes crossfade over 30 ms without a discontinuous jump")
+let reportedOffsets = LatencyAlignment.offsets([100.0/48_000*1000,205])!
+check(abs(reportedOffsets[0]-202.9166667)<1e-6 && reportedOffsets[1]==0,"Reported HomePod stream latency produces an actual wired-delay target")
+check(LatencyAlignment.offsets([nil,205]) == nil && LatencyAlignment.offsets([0,4_000]) == nil,"Unknown or excessive device latency never becomes a fabricated timing match")
 let timing = TimingPulse(sampleRate:48_000)
 var timingPeak = 0.0, betweenPulsesPeak = 0.0
 for frame in 0..<192_000 {

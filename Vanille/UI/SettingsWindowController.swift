@@ -6,7 +6,7 @@ final class SettingsWindowController: NSWindowController {
     private var login: ActionButton!
     private var pause: ActionButton!
     private let message = UI.text("",size:11,color:.secondaryLabelColor)
-    private let bypassList = UI.vertical(spacing:10)
+    private let bypassList = UI.documentStack(spacing:10)
     private var bypassSignature = ""
     private var profiles: ActionPopUp!
     private var selectedProfile: String?
@@ -33,7 +33,7 @@ final class SettingsWindowController: NSWindowController {
         general.addArrangedSubview(UI.separator())
         general.addArrangedSubview(ActionButton("System Audio Recording Permission…") { UI.openAudioPrivacy() })
         general.addArrangedSubview(ActionButton("Sound Settings & AirPlay…") { UI.openSoundSettings() })
-        let privacy = UI.text("Audio is processed only in local memory. Vanille does not record audio, capture video, or use a server.",size:12,color:.secondaryLabelColor)
+        let privacy = UI.text("Audio is processed in local memory and routed by macOS. Vanille does not save audio, capture video, or upload audio to a server.",size:12,color:.secondaryLabelColor)
         privacy.maximumNumberOfLines = 3; privacy.lineBreakMode = .byWordWrapping
         general.addArrangedSubview(privacy)
         message.maximumNumberOfLines = 3; message.lineBreakMode = .byWordWrapping; general.addArrangedSubview(message)
@@ -73,6 +73,10 @@ final class SettingsWindowController: NSWindowController {
         let pNote = UI.text("Profiles save the output, output volume, EQ, and app levels. Unavailable outputs are skipped. Your current bypass choices are kept.",size:12,color:.secondaryLabelColor)
         pNote.maximumNumberOfLines = 4; pNote.lineBreakMode = .byWordWrapping
         profileBody.addArrangedSubview(pNote); profileBody.addArrangedSubview(NSView())
+        for field in [privacy,message,note,profileDetails,pNote] {
+            field.preferredMaxLayoutWidth = 426
+            field.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
+        }
         tab("Profiles",body:profileBody,in:tabs)
     }
     private func tab(_ name:String,body:NSStackView,in tabs:NSTabView) {

@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-17T19:17:35Z",
+  "method": "Public HAL device, safety and stream latency. No acoustic measurement.",
+  "outputs": [
+    {
+      "name": "AirPlay",
+      "sampleRate": 48000,
+      "latencyFrames": 0,
+      "safetyOffsetFrames": 0,
+      "bufferFrames": 128,
+      "outputStreamLatencies": [
+        {
+          "latencyFrames": 9840,
+          "startingChannel": 1
+        }
+      ]
+    },
+    {
+      "name": "CalDigit TS4 Audio - Rear",
+      "sampleRate": 48000,
+      "latencyFrames": 50,
+      "safetyOffsetFrames": 50,
+      "bufferFrames": 512,
+      "outputStreamLatencies": [
+        {
+          "latencyFrames": 0,
+          "startingChannel": 1
+        }
+      ]
+    }
+  ],
+  "appliedDelayMS": {
+    "wired": 203,
+    "AirPlay": 0
+  }
+}

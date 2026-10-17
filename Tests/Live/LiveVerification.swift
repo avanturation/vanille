@@ -127,14 +127,20 @@ final class LiveVerification: NSObject {
         append("Starting quiet native 1 kHz test tone (−46 dBFS).")
         append("No audio is recorded. Other apps are bypassed for this test.")
         initialDefault = state.devices.defaultOutput()
-        initialTapCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
-        initialDeviceCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
-        let config = NSWorkspace.OpenConfiguration(); config.activates = false
-        NSWorkspace.shared.openApplication(at:fixtureURL,configuration:config) { [weak self] _,error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if let error { self.append(error.localizedDescription); self.finish(); return }
-                DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.prepare() }
+        var paused = original; paused.processingPaused = true; paused.timingSound = false
+        state.applyVerificationState(paused); state.audio.stopSynchronously()
+        // Measure an idle baseline, excluding the user's pre-test engine. HAL removes objects asynchronously.
+        DispatchQueue.main.asyncAfter(deadline:.now()+1) { [self] in
+            guard !self.finished else { return }
+            self.initialTapCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
+            self.initialDeviceCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
+            let config = NSWorkspace.OpenConfiguration(); config.activates = false
+            NSWorkspace.shared.openApplication(at:self.fixtureURL,configuration:config) { [weak self] _,error in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if let error { self.append(error.localizedDescription); self.finish(); return }
+                    DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.prepare() }
+                }
             }
         }
         let timeout = DispatchWorkItem { [weak self] in
@@ -323,19 +329,24 @@ final class RoutingVerification:NSObject {
               let airplay = state.routingOutputs.first(where: { $0.isAirPlay }) else { append("Connect a wired output and one system AirPlay output first."); return }
         outputs = [wired,airplay]
         initialDefault = state.devices.defaultOutput()
-        initialTapCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
-        initialDeviceCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
+        var paused = original; paused.processingPaused = true; paused.timingSound = false
+        state.applyVerificationState(paused); state.audio.stopSynchronously()
         append("Testing two real outputs: \(wired.name) + \(airplay.name).")
         append("Quiet 100 ms pulses; no samples are recorded. Speaker acoustics are not measured.")
-        let config = NSWorkspace.OpenConfiguration(); config.activates = false
-        NSWorkspace.shared.openApplication(at:root.appendingPathComponent("build/VanilleTestPulse.app"),configuration:config) { _,error in
-            DispatchQueue.main.async {
-                if let error { self.append(error.localizedDescription); self.finish(); return }
-                DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.prepare() }
+        DispatchQueue.main.asyncAfter(deadline:.now()+1) {
+            guard !self.finished else { return }
+            self.initialTapCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
+            self.initialDeviceCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
+            let config = NSWorkspace.OpenConfiguration(); config.activates = false
+            NSWorkspace.shared.openApplication(at:self.root.appendingPathComponent("build/VanilleTestPulse.app"),configuration:config) { _,error in
+                DispatchQueue.main.async {
+                    if let error { self.append(error.localizedDescription); self.finish(); return }
+                    DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.prepare() }
+                }
             }
         }
         let t = DispatchWorkItem { [weak self] in guard let self, !self.finished else { return }; self.append("Routing verification timed out."); self.finish() }
-        timeout = t; DispatchQueue.main.asyncAfter(deadline:.now()+100,execute:t)
+        timeout = t; DispatchQueue.main.asyncAfter(deadline:.now()+150,execute:t)
     }
     private func prepare() {
         guard !finished else { return }; state.refresh()
@@ -369,7 +380,7 @@ final class RoutingVerification:NSObject {
     }
     private func stage(_ index:Int) {
         guard !finished else { return }
-        guard index<6 else { finish(); return }
+        guard index<6 else { beginTimingSoundCheck(); return }
         var test = state.saved
         let g = test.outputGroups.firstIndex { $0.id == "verification.two-output" }!
         if index==1 { test.outputGroups[g].devices[0].volume = 0.3 }
@@ -400,6 +411,59 @@ final class RoutingVerification:NSObject {
         append(String(format:"%@ %@ · wired %.3f / AirPlay %.3f · delay %.1f ms",pass ? "PASS" : "FAIL",name,ratios[0],ratios[1],delay*1000))
         stage(index+1)
     }
+    private func beginTimingSoundCheck() {
+        append("Verifying the built-in timing sound with no captured applications…")
+        for p in probes { p.stop() }; combinedProbe.stop()
+        var test = state.saved
+        for app in state.applications { test.applications[app.id] = AppVolume(bypass:true,name:app.name) }
+        let g = test.outputGroups.firstIndex { $0.id == "verification.two-output" }!
+        for i in test.outputGroups[g].devices.indices {
+            test.outputGroups[g].devices[i].volume = 1; test.outputGroups[g].devices[i].muted = false; test.outputGroups[g].devices[i].delayMS = 0
+        }
+        test.eq = EQSettings(); test.processingPaused = false; test.timingSound = true
+        state.applyVerificationState(test); waitForTimingSound(0)
+    }
+    private func waitForTimingSound(_ attempt:Int) {
+        guard !finished else { return }
+        DispatchQueue.main.asyncAfter(deadline:.now()+1) {
+            guard !self.finished else { return }
+            if self.state.metrics.running && self.state.metrics.appIDs.isEmpty {
+                do {
+                    for i in 0..<2 { try self.probes[i].start(deviceUID:self.outputs[i].uid,analysisSeconds:4) }
+                    self.timingSoundStage(0)
+                } catch { self.append(error.localizedDescription); self.finish() }
+            } else if attempt<12 { self.waitForTimingSound(attempt+1) }
+            else { self.append(self.state.metrics.error ?? "Timing sound engine did not start."); self.finish() }
+        }
+    }
+    private func timingSoundStage(_ index:Int) {
+        guard !finished else { return }
+        guard index<3 else { finish(); return }
+        if index>0 {
+            var test = state.saved
+            let g = test.outputGroups.firstIndex { $0.id == "verification.two-output" }!
+            if index==1 { test.outputGroups[g].devices[1].delayMS = 400 }
+            else { test.timingSound = false; test.processingPaused = true }
+            state.applyVerificationState(test)
+        }
+        DispatchQueue.main.asyncAfter(deadline:.now()+(index==2 ? 5 : 9)) {
+            guard !self.finished else { return }
+            let amplitudes = self.probes.map { $0.amplitude1000.load(ordering:.relaxed) }
+            let a = self.probes[0].lastPulseEdge.load(ordering:.relaxed), b = self.probes[1].lastPulseEdge.load(ordering:.relaxed)
+            var phase = (b-a).truncatingRemainder(dividingBy:4)
+            if phase>2 { phase -= 4 }; if phase < -2 { phase += 4 }
+            if index==0 { self.baselineDelay = phase }
+            let delay = phase-self.baselineDelay
+            let pass:Bool
+            if index==0 { pass = amplitudes.allSatisfy { $0>0.0001 } && self.state.metrics.appIDs.isEmpty }
+            else if index==1 { pass = abs(delay-0.4)<0.018 && amplitudes.allSatisfy { $0>0.0001 } }
+            else { pass = amplitudes.allSatisfy { $0<1e-8 } && !self.state.metrics.running }
+            let name = ["Built-in timing sound without application capture","Timing sound applies 400 ms per-device offset","Timing sound stops safely"][index]
+            self.entries.append(["test":name,"passed":pass,"amplitudes":amplitudes,"relativeDelayMS":delay*1000,"capturedApplications":self.state.metrics.appIDs.count])
+            self.append(String(format:"%@ %@ · relative delay %.1f ms",pass ? "PASS" : "FAIL",name,delay*1000))
+            self.timingSoundStage(index+1)
+        }
+    }
     private func finish() {
         guard !finished else { return }; finished = true; timeout?.cancel()
         var paused = state.saved; paused.processingPaused = true; state.applyVerificationState(paused)
@@ -411,7 +475,7 @@ final class RoutingVerification:NSObject {
             self.entries.append(["test":"Default system output unchanged","passed":self.state.devices.defaultOutput() == self.initialDefault])
             self.entries.append(["test":"No leaked tap or aggregate","passed":taps == self.initialTapCount && devices == self.initialDeviceCount])
             let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"outputs":self.outputs.map(\.name),"measurements":self.entries,
-                "allPassed":self.entries.count == 8 && self.entries.allSatisfy { $0["passed"] as? Bool == true },
+                "allPassed":self.entries.count == 11 && self.entries.allSatisfy { $0["passed"] as? Bool == true },
                 "scope":"Two actual HAL output streams only. No microphone or acoustic synchronization measurement; two independent HomePod pairs remain unavailable."]
             if let data = try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:self.root.appendingPathComponent("build/live-routing-results.json"),options:.atomic) }
             self.state.applyVerificationState(self.original); self.append("Test finished; original settings restored.")

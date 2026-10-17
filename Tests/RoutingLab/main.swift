@@ -69,6 +69,10 @@ func describe(_ id:AudioObjectID) -> [String:Any] {
     d["safetyOffsetFrames"] = try? HAL.read(id,kAudioDevicePropertySafetyOffset,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput)
     d["bufferFrames"] = try? HAL.read(id,kAudioDevicePropertyBufferFrameSize,default:UInt32(0))
     d["clockDomain"] = try? HAL.read(id,kAudioDevicePropertyClockDomain,default:UInt32(0))
+    d["outputStreamLatencies"] = ((try? HAL.objects(id,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeOutput)) ?? []).map { stream -> [String:Any] in
+        ["latencyFrames":(try? HAL.read(stream,kAudioStreamPropertyLatency,default:UInt32(0))) ?? 0,
+         "startingChannel":(try? HAL.read(stream,kAudioStreamPropertyStartingChannel,default:UInt32(0))) ?? 0]
+    }
     if (d["class"] as? String) == "aagg" { d["composition"] = dictionary(id,kAudioAggregateDevicePropertyComposition) }
     if (d["class"] as? String) == "edev" {
         d["composition"] = dictionary(id,kAudioEndPointDevicePropertyComposition)
@@ -84,6 +88,7 @@ final class RoutingLabDelegate:NSObject,NSApplicationDelegate {
     var timer:Timer?
     var probe:AggregateProbe?
     var probeReport:[String:Any] = [:]
+    var nodeLatencies:[[String:Any]] = []
     let path = URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("build/routing-feasibility.json")
     func applicationDidFinishLaunching(_ notification:Notification) {
         window = NSWindow(contentRect:NSRect(x:0,y:0,width:740,height:580),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
@@ -94,6 +99,7 @@ final class RoutingLabDelegate:NSObject,NSApplicationDelegate {
         actions.addArrangedSubview(button("Sound Settings…",#selector(sound)))
         actions.addArrangedSubview(button("Audio MIDI Setup…",#selector(midi)))
         actions.addArrangedSubview(button("Probe Wired + AirPlay IO",#selector(probeRouting)))
+        actions.addArrangedSubview(button("Read Presentation Latency",#selector(readNodeLatencies)))
         let label = NSTextField(labelWithString:"AirPlay picker below routes this test player only; it does not route system audio.")
         label.font = .systemFont(ofSize:12)
         let picker = AVRoutePickerView(); player = AVPlayer(url:URL(fileURLWithPath:"/System/Library/Sounds/Glass.aiff")); picker.player = player
@@ -127,7 +133,7 @@ final class RoutingLabDelegate:NSObject,NSApplicationDelegate {
             d["devices"] = ((try? HAL.objects(id,kAudioPlugInPropertyDeviceList)) ?? []).map(describe)
             return d
         }
-        let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"defaultOutputID":manager.defaultOutput(),"devices":devices,"boxes":boxes,"transportManagers":transports,"aggregateProbe":probeReport]
+        let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"defaultOutputID":manager.defaultOutput(),"devices":devices,"boxes":boxes,"transportManagers":transports,"aggregateProbe":probeReport,"nodeLatencies":nodeLatencies]
         do {
             let data = try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys,.fragmentsAllowed])
             try data.write(to:path,options:.atomic)
@@ -136,6 +142,16 @@ final class RoutingLabDelegate:NSObject,NSApplicationDelegate {
             }.joined(separator:"\n") + "\n\nBoxes: \(boxes.count)\nTransport managers: \(transports.count)\n" + transports.map { "\($0)" }.joined(separator:"\n") + "\n\nAggregate probe:\n\(probeReport)"
             if text.string != summary { text.string = summary }
         } catch { text.string = "Snapshot failed: \(error.localizedDescription)" }
+    }
+    @objc func readNodeLatencies() {
+        nodeLatencies = ((try? manager.outputs()) ?? []).filter { $0.isAirPlay || $0.transport == kAudioDeviceTransportTypeUSB }.map { d in
+            let engine = AVAudioEngine()
+            do {
+                try engine.outputNode.auAudioUnit.setDeviceID(d.id)
+                return ["name":d.name,"presentationSeconds":engine.outputNode.presentationLatency,"deviceOutputLatencySeconds":engine.outputNode.auAudioUnit.deviceOutputLatency] as [String:Any]
+            } catch { return ["name":d.name,"error":error.localizedDescription] as [String:Any] }
+        }
+        refresh()
     }
     @objc func probeRouting() {
         guard probe == nil else { return }

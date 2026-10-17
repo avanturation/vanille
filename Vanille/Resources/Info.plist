@@ -14,6 +14,6 @@
 <key>LSUIElement</key><true/>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 <key>NSHighResolutionCapable</key><true/>
-<key>NSAudioCaptureUsageDescription</key><string>Vanille adjusts application volume and equalizer settings by processing system audio locally. Audio is never recorded or sent anywhere.</string>
+<key>NSAudioCaptureUsageDescription</key><string>Vanille routes system audio to your selected speakers and adjusts volume locally. Audio is not saved or uploaded to a server.</string>
 <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Avanturation.</string>
 </dict></plist>

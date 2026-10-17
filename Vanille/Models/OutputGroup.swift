@@ -28,3 +28,14 @@ struct OutputGroup: Codable, Equatable, Identifiable {
                 OutputGroup(id:"group.fullroom",name:"Full Room",devices:[wired,homepod,mini])]
     }
 }
+
+enum LatencyAlignment {
+    /// Align reported device + stream + safety latency. This is an initial estimate, not an acoustic measurement.
+    static func offsets(_ milliseconds:[Double?]) -> [Double]? {
+        guard !milliseconds.isEmpty else { return nil }
+        let values = milliseconds.compactMap { $0 }
+        guard values.count == milliseconds.count, values.allSatisfy({ $0.isFinite && $0>=0 }), let slowest = values.max() else { return nil }
+        let offsets = values.map { slowest-$0 }
+        return offsets.allSatisfy { $0<=3_000 } ? offsets : nil
+    }
+}

@@ -123,6 +123,7 @@ struct OutputDevice: Identifiable, Equatable {
     let channels: Int
     let sampleRate: Double
     let transport: UInt32
+    var reportedLatencyMS:Double? = nil
     var isAirPlay: Bool { transport == kAudioDeviceTransportTypeAirPlay }
 }
 

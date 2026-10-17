@@ -23,6 +23,7 @@ final class AppState {
     private var shuttingDown = false
     private var lastDiscoveryError: String?
     private var initializedRoutes = false
+    private var discoverySignature = ""
     private var timingTimeout:DispatchWorkItem?
     private var pausedBeforeTiming = true
     var allPresets: [EQPreset] { EQPreset.defaults + saved.customPresets }
@@ -39,7 +40,8 @@ final class AppState {
         if let error = metrics.error { return error }
         if output == nil { return "No audio output available." }
         if saved.processingPaused { return "Audio processing is paused." }
-        if saved.timingSound { return "Timing sound is playing. Add delay to the speaker you hear first." }
+        if saved.timingSound && metrics.running { return "Timing sound is playing. Add delay to the speaker you hear first." }
+        if !deviceRoutes.isEmpty && deviceRoutes.allSatisfy({ !$0.enabled }) { return "All group outputs are disabled. Original audio is playing." }
         if missingOutputCount > 0 { return "\(missingOutputCount) configured output(s) are unavailable. Original audio or the remaining outputs are in use." }
         if metrics.running { return "\(metrics.outputUIDs.count) output(s) active. Speaker synchronization is not calibrated." }
         if applications.isEmpty { return "Play audio in an app to adjust its volume." }
@@ -110,7 +112,11 @@ final class AppState {
                 try devices.select(fallback); output = fallback
             }
         } catch { lastDiscoveryError = error.localizedDescription; notice = lastDiscoveryError }
-        updateEngine(retry: retry)
+        // Ignore our own private Aggregate's add/remove notifications. Retry failures only when
+        // the visible hardware/default actually changed, or on an explicit user/service retry.
+        let signature = outputs.map { "\($0.uid):\($0.id):\($0.sampleRate):\($0.channels)" }.joined(separator:";") + ":default=\(output?.id ?? 0)"
+        let hardwareChanged = signature != discoverySignature; discoverySignature = signature
+        updateEngine(retry: retry || hardwareChanged)
         audio.snapshot { [weak self] value in
             guard let self, !self.shuttingDown else { return }
             self.metrics = value; self.notify()
@@ -239,6 +245,10 @@ final class AppState {
     }
     func toggleTimingSound(groupID:String?) {
         if saved.timingSound { stopTimingSound(); return }
+        let routes = saved.outputGroups.first(where: { $0.id == groupID })?.devices ?? deviceRoutes
+        guard routes.contains(where: { route in route.enabled && outputs.contains(where: { $0.uid == route.id }) }) else {
+            notice = "Assign and enable a connected output before playing the timing sound."; notify(); return
+        }
         pausedBeforeTiming = saved.processingPaused
         saved.selectedGroupID = groupID; saved.processingPaused = false; saved.timingSound = true; notice = nil
         changed(retry:true)
@@ -249,6 +259,22 @@ final class AppState {
         guard saved.timingSound else { return }
         timingTimeout?.cancel(); timingTimeout = nil; saved.timingSound = false
         saved.processingPaused = pausedBeforeTiming; changed(retry:true)
+    }
+    func matchDeviceTiming(groupID:String?) {
+        guard let groupID, let i = saved.outputGroups.firstIndex(where: { $0.id == groupID }) else { return }
+        let indices = saved.outputGroups[i].devices.indices.filter { j in
+            let r = saved.outputGroups[i].devices[j]
+            return r.enabled && outputs.contains { $0.uid == r.id }
+        }
+        guard indices.count>=2 else { notice = "Connect and enable at least two outputs to match their timing."; notify(); return }
+        let latencies = indices.map { j in outputs.first { $0.uid == saved.outputGroups[i].devices[j].id }?.reportedLatencyMS }
+        guard let offsets = LatencyAlignment.offsets(latencies) else {
+            notice = "macOS could not provide a usable timing estimate for every output. Existing delays were kept."; notify(); return
+        }
+        for (offset,j) in zip(offsets,indices) { saved.outputGroups[i].devices[j].delayMS = offset.rounded() }
+        saved.selectedGroupID = groupID
+        notice = "Initial timing matched using macOS device information. Listen to the timing sound to check the result."
+        changed(retry:true)
     }
     func updateRoute(_ id:String, change:(inout DeviceRoute)->Void) {
         if let groupID = saved.selectedGroupID, let i = saved.outputGroups.firstIndex(where: { $0.id == groupID }),
