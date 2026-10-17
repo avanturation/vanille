@@ -199,6 +199,11 @@ final class AppState {
         notify()
     }
     func clearNotice() { notice = nil; notify() }
+    #if VANILLE_DIAGNOSTICS
+    func applyVerificationState(_ value: SavedState) {
+        saved = value; updateEngine(retry: true); refresh()
+    }
+    #endif
     func shutdown() {
         shuttingDown = true; timer?.invalidate(); observations.removeAll()
         for token in workspaceTokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }

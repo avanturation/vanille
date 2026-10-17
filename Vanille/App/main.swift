@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var eq: EqualizerWindowController?
     private var settings: SettingsWindowController?
     private var terminationToken: NSObjectProtocol?
+    #if VANILLE_DIAGNOSTICS
+    private var verification: LiveVerification?
+    #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -33,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appItem = NSMenuItem(); menu.addItem(appItem)
         let appMenu = NSMenu(title:"Vanille"); appItem.submenu = appMenu
         appMenu.addItem(withTitle:"Settings…",action:#selector(showSettings),keyEquivalent:",").target = self
+        #if VANILLE_DIAGNOSTICS
+        appMenu.addItem(withTitle:"Run Audio Verification…",action:#selector(runVerification),keyEquivalent:"t").target = self
+        #endif
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle:"Quit Vanille",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
         let editItem = NSMenuItem(); menu.addItem(editItem)
@@ -66,6 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     @objc private func togglePause() { state.setPaused(!state.saved.processingPaused) }
     @objc private func restore() { state.restoreOriginalAudio() }
+    #if VANILLE_DIAGNOSTICS
+    @objc private func runVerification() {
+        popover.performClose(nil)
+        verification = LiveVerification(state: state); verification?.run()
+    }
+    #endif
     @objc func showEqualizer() {
         popover.performClose(nil)
         if eq == nil { eq = EqualizerWindowController(state:state) }

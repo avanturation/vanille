@@ -232,11 +232,11 @@ final class AudioEngine {
         && f.mFormatFlags & kAudioFormatFlagIsBigEndian == 0 && f.mBitsPerChannel == 32
     }
     private func tapOrder() throws -> [String] {
-        var result: CFArray?
-        var size = UInt32(MemoryLayout<CFArray?>.size)
+        var result: Unmanaged<CFArray>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFArray>?>.size)
         var a = HAL.address(kAudioAggregateDevicePropertyTapList)
         try HAL.check(AudioObjectGetPropertyData(aggregate, &a, 0, nil, &size, &result), "Read tap order")
-        return result as? [String] ?? []
+        return result?.takeRetainedValue() as? [String] ?? []
     }
     private func disablePhysicalInputs(count: Int, total: Int) throws {
         guard count > 0, let ioProc else { return }
@@ -316,9 +316,9 @@ final class AudioController: @unchecked Sendable {
     }
     func reconcile(apps: [AudioApplication], output: OutputDevice?, state: SavedState, retry: Bool = false) {
         queue.async { [self] in
-            let candidates = apps.filter {
-                !(state.applications[$0.id]?.bypass ?? false)
-                && (output.map { $0.id }.map($0.outputDevices.contains) ?? false)
+            let candidates = apps.filter { app in
+                !(state.applications[app.id]?.bypass ?? false)
+                && (output.map { app.outputDevices.contains($0.id) } ?? false)
             }
             let desired = state.processingPaused || output == nil ? "" :
                 "\(output!.uid):\(output!.sampleRate):" + candidates.map { "\($0.id)=\($0.processes.sorted())" }.joined(separator: ";")

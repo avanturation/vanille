@@ -6,11 +6,16 @@ APP_PATH="${VANILLE_APP_PATH:-$PROJECT_DIR/../Vanille.app}"
 SDK_PATH="$(xcrun --sdk macosx --show-sdk-path)"
 mkdir -p "$BUILD_DIR/module-cache" "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 SOURCES=("$PROJECT_DIR"/Vanille/**/*.swift)
+EXTRA_FLAGS=()
+if [[ "${VANILLE_DIAGNOSTICS:-0}" == "1" ]]; then
+  EXTRA_FLAGS=(-D VANILLE_DIAGNOSTICS)
+  SOURCES+=("$PROJECT_DIR/Tests/Live/LiveVerification.swift")
+fi
 xcrun swiftc -O -whole-module-optimization -swift-version 5 \
   -target arm64-apple-macos15.0 -sdk "$SDK_PATH" \
   -module-cache-path "$BUILD_DIR/module-cache" \
   -module-name Vanille -framework AppKit -framework CoreAudio -framework AudioToolbox -framework ServiceManagement \
-  "${SOURCES[@]}" -o "$APP_PATH/Contents/MacOS/Vanille"
+  "${EXTRA_FLAGS[@]}" "${SOURCES[@]}" -o "$APP_PATH/Contents/MacOS/Vanille"
 cp "$PROJECT_DIR/Vanille/Resources/Info.plist" "$APP_PATH/Contents/Info.plist"
 /usr/bin/xattr -cr "$APP_PATH"
 /usr/bin/codesign --force --sign - --identifier com.avanturation.Vanille "$APP_PATH"

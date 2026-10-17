@@ -44,11 +44,11 @@ enum HAL {
         try check(status, "Change audio property")
     }
     static func string(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector) throws -> String {
-        var result: CFString?
-        var size = UInt32(MemoryLayout<CFString?>.size)
+        var result: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         var property = address(selector)
         try check(AudioObjectGetPropertyData(object, &property, 0, nil, &size, &result), "Read audio name")
-        return (result as String?) ?? ""
+        return (result?.takeRetainedValue() as String?) ?? ""
     }
     static func objects(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
                         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal) throws -> [AudioObjectID] {
