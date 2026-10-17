@@ -4,5 +4,12 @@
   "minimumMacOS15": true,
   "diagnosticMenusAbsent": true,
   "manualDelayUIAbsent": true,
-  "allPassed": true
+  "allPassed": true,
+  "nativeFinalAppLaunched": true,
+  "nativePopupTwoOutputsActive": true,
+  "nativeGroupEditorWithoutDelayControls": true,
+  "nativeSettingsAndEqualizerInspected": true,
+  "codeCommit": "14084e9094477faf7f8b68212c2a00546bdf3f59",
+  "xcodeCI": "https://github.com/avanturation/vanille/actions/runs/39063463609",
+  "date": "2026-10-17T19:44:00Z"
 }

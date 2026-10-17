@@ -31,7 +31,7 @@
 | ad-hoc 서명, 배포 zip에서 새로 푼 앱 검증 | 성공 |
 | 외부 패키지 / 웹 UI 런타임 | 없음 |
 | DSP·버퍼·설정 자동 검사 | **63개 통과** |
-| Xcode ARM64 CI, macOS 15 / 26 | `779b513` 자동 보정 버전, 두 환경 모두 통과 |
+| Xcode ARM64 CI, macOS 15 / 26 | `14084e9` 최종 코드, 두 환경 모두 통과 |
 
 63개 검사는 44.1/48/96kHz의 10개 밴드, 실제 PCM Gain/Mute, EQ와 Gain 동시 처리, headroom, limiter, 10ms ramp, planar/interleaved HAL 버퍼, 잘린 입력의 안전 중지, 짧은 소리의 신호 래치, 실제 출력별 impulse 지연, stereo polarity, 출력 mute 격리, 30ms 지연 변경 crossfade, 설정 migration/손상 복구, SPSC 동시 갱신을 포함합니다. 진단 음원의 pulse/종료·재시작 안전성, 게인 제한, OS 지연 계산, 알 수 없는 지연 거부, AirPlay 세션 UID 변경과 모호한 endpoint 거부도 검사했습니다.
 
@@ -66,7 +66,7 @@
 
 초기 회귀 시도에서는 사용자의 실행 중 엔진까지 baseline에 포함하여 정리 비교가 잘못 실패했습니다. 엔진을 먼저 중지하고 HAL의 비동기 제거를 기다린 뒤 baseline을 측정하도록 하네스를 고쳤습니다. 위 17개 결과는 수정 후의 재실행 결과입니다. 신호 검사의 실패를 숨기기 위해 허용 오차를 늘린 것이 아닙니다.
 
-배포용 일반 빌드에서도 지연 관련 입력·스텝퍼·보정 버튼이 없음을 접근성 트리와 화면으로 확인했습니다. 최종 zip에서 새로 푼 앱의 arm64, macOS 15 최소 버전, 서명, 진단 메뉴와 수동 지연 UI 부재를 검증했습니다. [배포 검사 수치](Tests/Results/ReleaseValidation.json).
+승인 후 최종 배포 앱을 다시 실행해 실제 두 출력 활성 상태와 메뉴 막대 팝오버, 그룹 편집, 설정, EQ 창을 확인했습니다. 지연 관련 입력·스텝퍼·보정 버튼이 없음을 접근성 트리와 화면으로 확인했습니다. 최종 zip에서 새로 푼 앱의 arm64, macOS 15 최소 버전, 서명, 진단 메뉴와 수동 지연 UI 부재를 검증했습니다. [배포 검사 수치](Tests/Results/ReleaseValidation.json).
 
 원본 수치: [LiveRouting.json](Tests/Results/LiveRouting.json), [LiveAudio.json](Tests/Results/LiveAudio.json), [Offline.txt](Tests/Results/Offline.txt). 오디오 샘플, 하드웨어 UID, 네트워크 이름은 포함하지 않습니다.
 
@@ -127,3 +127,4 @@ Safari에서 공개 YouTube Big Buck Bunny 영상을 실제 재생했고 활성 
 - `48f5385`: 다중 출력, 독립 Gain/Delay, 그룹 편집과 타이밍 도구, 제한 문서화. [macOS 15/26 Xcode·offline·app 빌드 모두 성공](https://github.com/avanturation/vanille/actions/runs/39060207177).
 - `760cc72`: 장치와 stream 지연을 함께 읽어 실제 보정. [macOS 15/26 CI 성공](https://github.com/avanturation/vanille/actions/runs/39061859409).
 - `779b513`: 지연 보정 자동 갱신, 사용자 지연 UI 제거, AirPlay 역할 재연결, Safari Helper 표시 개선. [macOS 15/26 CI 성공](https://github.com/avanturation/vanille/actions/runs/39062704328).
+- `14084e9`: 최종 네이티브 설정 정리, 63개 자동 검사와 12개 실제 라우팅·17개 실제 앱 오디오 결과 기록. [macOS 15/26 Xcode·검사·app 빌드 모두 성공](https://github.com/avanturation/vanille/actions/runs/39063463609).
