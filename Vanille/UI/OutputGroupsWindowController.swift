@@ -9,15 +9,6 @@ final class ActionTextField: NSTextField,NSTextFieldDelegate {
     @objc private func invoke() { onCommit?(stringValue) }
     func controlTextDidEndEditing(_ obj:Notification) { onCommit?(stringValue) }
 }
-final class ActionStepper:NSStepper {
-    var onChange:((Double)->Void)?
-    convenience init(value:Double,change:@escaping(Double)->Void) {
-        self.init(frame:.zero); minValue = 0; maxValue = 3000; increment = 1; doubleValue = value
-        onChange = change; target = self; action = #selector(invoke); controlSize = .small
-    }
-    @objc private func invoke() { onChange?(doubleValue) }
-}
-
 final class DeviceRouteRow:NSView {
     private let state:AppState
     private let id:String
@@ -26,7 +17,6 @@ final class DeviceRouteRow:NSView {
     private var slider:ActionSlider!
     private var mute:ActionButton!
     private let value = UI.text("",size:11,color:.secondaryLabelColor)
-    private let delay = UI.text("",size:10,color:.secondaryLabelColor)
     private let unavailable = UI.text("",size:11,color:.secondaryLabelColor)
     init(route:DeviceRoute,state:AppState) {
         self.state = state; id = route.id; super.init(frame:.zero)
@@ -40,9 +30,8 @@ final class DeviceRouteRow:NSView {
         }
         value.widthAnchor.constraint(equalToConstant:36).isActive = true; value.alignment = .right
         value.font = .monospacedDigitSystemFont(ofSize:11,weight:.regular)
-        delay.widthAnchor.constraint(equalToConstant:72).isActive = true; delay.alignment = .right
         let top = UI.horizontal([enabled,NSView(),mute],spacing:4)
-        let bottom = UI.horizontal([slider,value,delay],spacing:6)
+        let bottom = UI.horizontal([slider,value],spacing:6)
         let root = UI.vertical([top,bottom,unavailable],spacing:1)
         for row in [top,bottom,unavailable] { row.widthAnchor.constraint(equalTo:root.widthAnchor).isActive = true }
         UI.pin(root,to:self); token = state.observe { [weak self] in self?.update() }; update()
@@ -50,15 +39,14 @@ final class DeviceRouteRow:NSView {
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
     private func update() {
         guard let route = state.deviceRoutes.first(where: { $0.id == id }) else { return }
-        let connected = state.outputs.contains { $0.uid == id }
+        let connected = state.outputDevice(for:id) != nil
         enabled.state = route.enabled ? .on : .off; enabled.isEnabled = connected
         if !slider.isHighlighted { slider.doubleValue = Double(route.volume) }
         slider.isEnabled = connected && route.enabled && !route.muted
-        slider.isHidden = !connected; value.isHidden = !connected; delay.isHidden = !connected; mute.isHidden = !connected
+        slider.isHidden = !connected; value.isHidden = !connected; mute.isHidden = !connected
         unavailable.isHidden = connected
         unavailable.stringValue = route.isAssigned ? "Disconnected · Original audio remains available" : "Not assigned · Choose an output in Edit Groups"
         value.stringValue = "\(Int((route.volume*100).rounded()))%"
-        delay.stringValue = "Delay \(Int(route.delayMS)) ms"
         mute.image = UI.symbol(route.muted ? "speaker.slash.fill" : "speaker.wave.2",label:route.muted ? "Unmute" : "Mute")
         mute.isEnabled = route.enabled
     }
@@ -75,8 +63,6 @@ private final class GroupDeviceEditor:NSView {
     private var volume:ActionSlider!
     private var enable:ActionButton!
     private var mute:ActionButton!
-    private var delay:ActionTextField!
-    private var stepper:ActionStepper!
     private let volumeValue = UI.text("",size:11,color:.secondaryLabelColor)
     private var route:DeviceRoute? {
         guard let g = state.saved.outputGroups.first(where: { $0.id == groupID }), g.devices.indices.contains(index) else { return nil }; return g.devices[index]
@@ -98,15 +84,7 @@ private final class GroupDeviceEditor:NSView {
         volume = ActionSlider(value:1,min:0,max:1,label:"Output volume") { [weak self] v in self?.change { $0.volume = Float(v); $0.muted = false } }
         volumeValue.widthAnchor.constraint(equalToConstant:35).isActive = true
         let middle = UI.horizontal([enable,mute,UI.text("Volume",size:11),volume,volumeValue])
-        delay = ActionTextField("0",label:"Additional output delay in milliseconds") { [weak self] text in
-            if let v = Double(text) { self?.change { $0.delayMS = v } }
-        }
-        delay.alignment = .right; delay.widthAnchor.constraint(equalToConstant:60).isActive = true
-        let formatter = NumberFormatter(); formatter.minimum = 0; formatter.maximum = 3000; formatter.allowsFloats = false; delay.formatter = formatter
-        stepper = ActionStepper(value:0) { [weak self] v in self?.change { $0.delayMS = v } }
-        stepper.setAccessibilityLabel("Adjust delay in milliseconds")
-        let bottom = UI.horizontal([UI.text("Additional Delay",size:11),delay,stepper,UI.text("ms",size:11,color:.secondaryLabelColor),NSView()])
-        let root = UI.vertical([top,middle,bottom,UI.separator()],spacing:6)
+        let root = UI.vertical([top,middle,UI.separator()],spacing:6)
         for child in root.arrangedSubviews { child.widthAnchor.constraint(equalTo:root.widthAnchor).isActive = true }
         UI.pin(root,to:self); token = state.observe { [weak self] in self?.update() }; update()
     }
@@ -114,22 +92,24 @@ private final class GroupDeviceEditor:NSView {
     private func change(_ body:(inout DeviceRoute)->Void) { state.updateGroupRoute(groupID:groupID,index:index,change:body) }
     private func update() {
         guard let r = route else { return }
-        let options = [("Not assigned","")] + state.routingOutputs.map { ($0.isAirPlay ? "AirPlay (current system connection)" : $0.name,$0.uid) }
+        let singleAirPlay = state.routingOutputs.filter(\.isAirPlay).count == 1
+        let options = [("Not assigned","")] + state.routingOutputs.map {
+            ($0.isAirPlay ? "AirPlay (current system connection)" : $0.name,
+             $0.isAirPlay && singleAirPlay ? DeviceRoute.systemAirPlayID : $0.uid)
+        }
         var choices = options
-        if r.isAssigned && !state.routingOutputs.contains(where: { $0.uid == r.id }) { choices.append(("Disconnected",r.id)) }
+        if r.isAssigned && state.outputDevice(for:r.id) == nil { choices.append(("Disconnected",r.id)) }
         picker.setItems(choices,selected:r.isAssigned ? r.id : "")
         enable.state = r.enabled ? .on : .off; mute.state = r.muted ? .on : .off
         if !volume.isHighlighted { volume.doubleValue = Double(r.volume) }
         volumeValue.stringValue = "\(Int((r.volume*100).rounded()))%"
-        if delay.currentEditor() == nil { delay.doubleValue = r.delayMS }
-        stepper.doubleValue = r.delayMS
-        let connected = state.outputs.contains { $0.uid == r.id }
-        volume.isEnabled = connected; mute.isEnabled = connected; delay.isEnabled = connected; stepper.isEnabled = connected
+        let connected = state.outputDevice(for:r.id) != nil
+        volume.isEnabled = connected; mute.isEnabled = connected
     }
     deinit { if let token { state.removeObserver(token) } }
 }
 
-final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
+final class OutputGroupsWindowController:NSWindowController {
     let state:AppState
     private var token:UUID?
     private var selectedID:String?
@@ -137,15 +117,13 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
     private let rows = UI.documentStack(spacing:12)
     private let note = UI.text("",size:11,color:.secondaryLabelColor)
     private var signature = ""
-    private var timingButton:ActionButton!
     private var useButton:ActionButton!
-    private var matchButton:ActionButton!
     private let activeStatus = UI.text("",size:11,color:.secondaryLabelColor)
     init(state:AppState) {
         self.state = state; selectedID = state.saved.selectedGroupID ?? state.saved.outputGroups.first?.id
-        let w = NSWindow(contentRect:NSRect(x:0,y:0,width:620,height:580),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
-        w.title = "Output Groups"; w.isReleasedWhenClosed = false; w.minSize = NSSize(width:590,height:540)
-        super.init(window:w); w.delegate = self; build(); token = state.observe { [weak self] in self?.update() }; update(); w.center()
+        let w = NSWindow(contentRect:NSRect(x:0,y:0,width:620,height:420),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
+        w.title = "Output Groups"; w.isReleasedWhenClosed = false; w.minSize = NSSize(width:590,height:370)
+        super.init(window:w); build(); token = state.observe { [weak self] in self?.update() }; update(); w.center()
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
     private func build() {
@@ -157,7 +135,7 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
         let delete = ActionButton("Delete") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.deleteGroup(id); self.selectedID = nil; self.update() }
         root.addArrangedSubview(UI.horizontal([picker,useButton,rename,add,delete]))
         root.addArrangedSubview(activeStatus)
-        let intro = UI.text("Copy stereo audio to each enabled output. Match Device Timing sets an initial delay; the timing sound helps you check the result.",size:12,color:.secondaryLabelColor)
+        let intro = UI.text("Choose the speakers in this group. Timing is handled automatically.",size:12,color:.secondaryLabelColor)
         intro.maximumNumberOfLines = 3; intro.lineBreakMode = .byWordWrapping; intro.preferredMaxLayoutWidth = 584
         intro.setContentCompressionResistancePriority(.defaultLow,for:.horizontal); root.addArrangedSubview(intro)
         let scroll = NSScrollView(); scroll.drawsBackground = false; scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true
@@ -165,18 +143,12 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
         rows.leadingAnchor.constraint(equalTo:scroll.contentView.leadingAnchor).isActive = true
         rows.trailingAnchor.constraint(equalTo:scroll.contentView.trailingAnchor).isActive = true
         rows.topAnchor.constraint(equalTo:scroll.contentView.topAnchor).isActive = true
-        scroll.heightAnchor.constraint(greaterThanOrEqualToConstant:200).isActive = true
+        scroll.heightAnchor.constraint(greaterThanOrEqualToConstant:130).isActive = true
         root.addArrangedSubview(scroll)
-        timingButton = ActionButton("Play Timing Sound") { [weak self] in guard let self else { return }; self.state.toggleTimingSound(groupID:self.selectedID) }
-        matchButton = ActionButton("Match Device Timing") { [weak self] in guard let self else { return }; self.state.matchDeviceTiming(groupID:self.selectedID) }
-        matchButton.toolTip = "Sets initial delays from the timing reported by macOS. This does not measure the sound in your room."
         root.addArrangedSubview(UI.horizontal([
-            ActionButton("Add Output") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.addGroupDevice(id) },timingButton,matchButton,NSView(),
+            ActionButton("Add Output") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.addGroupDevice(id) },NSView(),
             ActionButton("Sound Settings…") { UI.openSoundSettings() }
         ]))
-        let hint = UI.text("Start with Match Device Timing, then play the timing sound. If two pulses are still separate, add delay to the speaker you hear first. The sound stops after 90 seconds.",size:11,color:.secondaryLabelColor)
-        hint.maximumNumberOfLines = 3; hint.lineBreakMode = .byWordWrapping; hint.preferredMaxLayoutWidth = 584
-        hint.setContentCompressionResistancePriority(.defaultLow,for:.horizontal); root.addArrangedSubview(hint)
         note.maximumNumberOfLines = 4; note.lineBreakMode = .byWordWrapping; note.preferredMaxLayoutWidth = 584
         note.setContentCompressionResistancePriority(.defaultLow,for:.horizontal); root.addArrangedSubview(note)
         for v in root.arrangedSubviews { v.widthAnchor.constraint(equalTo:root.widthAnchor).isActive = true }
@@ -187,12 +159,7 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
         let active = selectedID != nil && state.saved.selectedGroupID == selectedID
         useButton.title = active ? "In Use" : "Use Group"; useButton.isEnabled = selectedID != nil && !active
         activeStatus.stringValue = active ? (state.saved.processingPaused ? "This group is selected. Start processing to apply it." : "This group is in use.") : "Editing this group. Choose Use Group to apply its settings."
-        timingButton.title = state.saved.timingSound ? "Stop Timing Sound" : "Play Timing Sound"
         let group = state.saved.outputGroups.first { $0.id == selectedID }
-        matchButton.isEnabled = (group?.devices.filter { route in route.enabled && state.outputs.contains { $0.uid == route.id } }.count ?? 0)>=2
-        timingButton.isEnabled = state.saved.timingSound || (group?.devices.contains(where: { route in
-            route.enabled && state.outputs.contains(where: { $0.uid == route.id })
-        }) ?? false)
         let newSignature = (group?.id ?? "") + (group?.devices.map { $0.id+$0.name }.joined(separator:";") ?? "")
         if signature != newSignature {
             signature = newSignature
@@ -202,9 +169,8 @@ final class OutputGroupsWindowController:NSWindowController,NSWindowDelegate {
                 row.widthAnchor.constraint(equalTo:rows.widthAnchor).isActive = true
             } }
         }
-        note.stringValue = state.notice ?? "Connect AirPlay in Control Center → Sound. macOS exposes one system AirPlay output; two HomePod pairs are not independently available here. Each output can be added once. AirPlay delay requires manual listening."
+        note.stringValue = state.notice ?? "Connect AirPlay in Control Center → Sound. One system AirPlay connection is available; two HomePod pairs cannot be selected independently here."
     }
-    func windowWillClose(_ notification:Notification) { state.stopTimingSound() }
     private func newGroup() {
         UI.prompt(title:"New Output Group",message:"Name the group.",window:window) { [weak self] name in
             guard let self, let name, !name.isEmpty else { return }

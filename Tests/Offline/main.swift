@@ -136,6 +136,10 @@ check(delta<=0.1/1440+1e-9 && last==0,"Delay changes crossfade over 30 ms withou
 let reportedOffsets = LatencyAlignment.offsets([100.0/48_000*1000,205])!
 check(abs(reportedOffsets[0]-202.9166667)<1e-6 && reportedOffsets[1]==0,"Reported HomePod stream latency produces an actual wired-delay target")
 check(LatencyAlignment.offsets([nil,205]) == nil && LatencyAlignment.offsets([0,4_000]) == nil,"Unknown or excessive device latency never becomes a fabricated timing match")
+let airA = OutputDevice(id:1,uid:"airplay.sessionA",name:"AirPlay",channels:2,sampleRate:48_000,transport:kAudioDeviceTransportTypeAirPlay,reportedLatencyMS:205)
+let airB = OutputDevice(id:2,uid:"airplay.sessionB",name:"AirPlay",channels:2,sampleRate:48_000,transport:kAudioDeviceTransportTypeAirPlay,reportedLatencyMS:215)
+check(OutputRouting.device(for:DeviceRoute.systemAirPlayID,in:[airA]) == airA && OutputRouting.device(for:DeviceRoute.systemAirPlayID,in:[airB]) == airB,"System AirPlay route follows reconnecting public endpoint without retaining stale UID")
+check(OutputRouting.device(for:DeviceRoute.systemAirPlayID,in:[airA,airB]) == nil,"Ambiguous AirPlay endpoints are never silently treated as the same speaker")
 let timing = TimingPulse(sampleRate:48_000)
 var timingPeak = 0.0, betweenPulsesPeak = 0.0
 for frame in 0..<192_000 {
@@ -158,10 +162,10 @@ check(restored.outputGroups == saved.outputGroups && restored.selectedGroupID ==
 let oldData = try! JSONSerialization.data(withJSONObject:["schema":1,"processingPaused":true])
 let migrated = try! JSONDecoder().decode(SavedState.self,from:oldData)
 check(migrated.outputGroups.count == 4 && migrated.processingPaused,"Existing settings migrate safely to editable output groups")
-var transient = saved; transient.timingSound = true; transient.processingPaused = false
+var transient = saved; transient.timingSound = true; transient.processingPaused = false; transient.manualTimingForVerification = true
 store.save(transient,immediately:true)
 let safeRestart = StateStore(url:temp).load()
-check(!safeRestart.timingSound && safeRestart.processingPaused,"Timing tests never restart automatically after a crash or relaunch")
+check(!safeRestart.timingSound && !safeRestart.manualTimingForVerification && safeRestart.processingPaused,"Diagnostic timing overrides never restart after a crash or relaunch")
 try! Data("broken".utf8).write(to:temp)
 let corrupt = StateStore(url:temp); let fallback = corrupt.load()
 check(corrupt.loadWarning != nil && fallback.eq == EQSettings(),"Corrupt settings recover to safe defaults")

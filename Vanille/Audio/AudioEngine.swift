@@ -168,6 +168,7 @@ struct EngineMetrics {
     var limitedSamples: UInt64 = 0
     var originalAudioIDs: Set<String> = []
     var outputUIDs: [String] = []
+    var outputDelayMS:[Double] = []
     var error: String?
 }
 
@@ -359,6 +360,7 @@ final class AudioEngine {
             limitedSamples: context.clipped.load(ordering: .relaxed))
         if Date().timeIntervalSince(startedAt) > 2 { result.originalAudioIDs = Set(appIDs).subtracting(active) }
         result.outputUIDs = routedDevices.map(\.uid)
+        result.outputDelayMS = routeSettings.map(\.delayMS)
         if active.isEmpty && !timingSound && Date().timeIntervalSince(startedAt) > 12 {
             result.error = "No processable audio was received. Original audio is playing. Check audio permission or use Protected Content Bypass."
             stop(); return result
@@ -443,13 +445,25 @@ final class AudioController: @unchecked Sendable {
             } ?? []
             let available = availableOutputs.isEmpty ? output.map { [$0] } ?? [] : availableOutputs
             let pairs = configured.filter(\.enabled).compactMap { route -> (OutputDevice,DeviceRoute)? in
-                guard let device = available.first(where: { $0.uid == route.id }) else { return nil }
+                guard let device = OutputRouting.device(for:route.id,in:available) else { return nil }
                 return (device,route)
             }
-            let destinations = pairs.map { $0.0 }, routes = pairs.map { $0.1 }
+            let destinations = pairs.map { $0.0 }
+            var routes = pairs.map { $0.1 }
             let candidates = apps.filter { app in
                 !(state.applications[app.id]?.bypass ?? false)
                 && (output.map { app.outputDevices.contains($0.id) } ?? false)
+            }
+            if !state.manualTimingForVerification {
+                if destinations.count<2 {
+                    for i in routes.indices { routes[i].delayMS = 0 }
+                } else if let offsets = LatencyAlignment.offsets(destinations.map(\.reportedLatencyMS)) {
+                    for i in routes.indices { routes[i].delayMS = offsets[i] }
+                } else if !state.processingPaused && (!candidates.isEmpty || state.timingSound) {
+                    engine.stop(); signature = ""; currentMetrics = EngineMetrics()
+                    lastError = "These speakers cannot currently be used together. Original audio is playing."
+                    return
+                }
             }
             let desired = state.processingPaused || output == nil || destinations.isEmpty ? "" :
                 "\(output!.uid):\(output!.sampleRate):" + destinations.map { "\($0.uid):\($0.sampleRate)" }.joined(separator:",")

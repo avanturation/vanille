@@ -24,8 +24,6 @@ final class AppState {
     private var lastDiscoveryError: String?
     private var initializedRoutes = false
     private var discoverySignature = ""
-    private var timingTimeout:DispatchWorkItem?
-    private var pausedBeforeTiming = true
     var allPresets: [EQPreset] { EQPreset.defaults + saved.customPresets }
     var processing: Bool { !saved.processingPaused && !sleeping }
     var selectedGroup: OutputGroup? { saved.outputGroups.first { $0.id == saved.selectedGroupID } }
@@ -35,15 +33,16 @@ final class AppState {
     var routingOutputs: [OutputDevice] {
         outputs.filter { $0.transport != kAudioDeviceTransportTypeAggregate && $0.transport != kAudioDeviceTransportTypeVirtual }
     }
-    var missingOutputCount: Int { deviceRoutes.filter { r in r.enabled && !outputs.contains { $0.uid == r.id } }.count }
+    func outputDevice(for id:String) -> OutputDevice? { OutputRouting.device(for:id,in:outputs) }
+    var missingOutputCount: Int { deviceRoutes.filter { $0.enabled && outputDevice(for:$0.id) == nil }.count }
     var statusText: String {
         if let error = metrics.error { return error }
         if output == nil { return "No audio output available." }
         if saved.processingPaused { return "Audio processing is paused." }
-        if saved.timingSound && metrics.running { return "Timing sound is playing. Add delay to the speaker you hear first." }
+        if saved.timingSound && metrics.running { return "Running an audio check." }
         if !deviceRoutes.isEmpty && deviceRoutes.allSatisfy({ !$0.enabled }) { return "All group outputs are disabled. Original audio is playing." }
         if missingOutputCount > 0 { return "\(missingOutputCount) configured output(s) are unavailable. Original audio or the remaining outputs are in use." }
-        if metrics.running { return "\(metrics.outputUIDs.count) output(s) active. Speaker synchronization is not calibrated." }
+        if metrics.running { return "\(metrics.outputUIDs.count) output(s) active." }
         if applications.isEmpty { return "Play audio in an app to adjust its volume." }
         return "Apps using original audio are not affected by EQ."
     }
@@ -90,6 +89,16 @@ final class AppState {
             output = outputs.first { $0.id == devices.defaultOutput() }
             applications = try processes.applications()
             masterVolume = output.flatMap { devices.volume($0.id) }
+            // A system-connected AirPlay route follows that public connection across ephemeral UIDs.
+            // It never represents two independent HomePod destinations.
+            let airplay = routingOutputs.filter(\.isAirPlay)
+            if airplay.count == 1 {
+                for i in saved.outputGroups.indices {
+                    for j in saved.outputGroups[i].devices.indices where saved.outputGroups[i].devices[j].id == airplay[0].uid {
+                        saved.outputGroups[i].devices[j].id = DeviceRoute.systemAirPlayID
+                    }
+                }
+            }
             if !initializedRoutes {
                 initializedRoutes = true
                 if let wired = routingOutputs.first(where: { $0.transport == kAudioDeviceTransportTypeUSB })
@@ -105,7 +114,9 @@ final class AppState {
             }
             lastDiscoveryError = nil
             for app in applications where saved.applications[app.id] == nil {
-                saved.applications[app.id] = AppVolume(name: app.name)
+                if app.id == "com.apple.Safari", var legacy = saved.applications["com.apple.WebKit.GPU"] {
+                    legacy.name = app.name; saved.applications[app.id] = legacy
+                } else { saved.applications[app.id] = AppVolume(name: app.name) }
             }
             if output == nil, let fallback = outputs.first(where: { !$0.isAirPlay }) ?? outputs.first {
                 // Only recover when HAL reports no valid default. Don't override a valid user's route.
@@ -144,12 +155,12 @@ final class AppState {
         var v = volume(for: id); v.bypass = bypass; saved.applications[id] = v; changed(retry: true)
     }
     func setPaused(_ paused: Bool) {
-        if paused { timingTimeout?.cancel(); timingTimeout = nil; saved.timingSound = false }
+        if paused { saved.timingSound = false }
         saved.processingPaused = paused; changed(retry: true)
     }
     func restoreOriginalAudio() {
         saved.processingPaused = true
-        timingTimeout?.cancel(); timingTimeout = nil; saved.timingSound = false
+        saved.timingSound = false
         audio.stopSynchronously(); metrics = EngineMetrics(); changed()
         notice = "Original audio restored. Processing is paused."; notify()
     }
@@ -243,39 +254,6 @@ final class AppState {
     func selectGroup(_ id: String?) {
         saved.selectedGroupID = id; notice = nil; changed(retry:true)
     }
-    func toggleTimingSound(groupID:String?) {
-        if saved.timingSound { stopTimingSound(); return }
-        let routes = saved.outputGroups.first(where: { $0.id == groupID })?.devices ?? deviceRoutes
-        guard routes.contains(where: { route in route.enabled && outputs.contains(where: { $0.uid == route.id }) }) else {
-            notice = "Assign and enable a connected output before playing the timing sound."; notify(); return
-        }
-        pausedBeforeTiming = saved.processingPaused
-        saved.selectedGroupID = groupID; saved.processingPaused = false; saved.timingSound = true; notice = nil
-        changed(retry:true)
-        let timeout = DispatchWorkItem { [weak self] in self?.stopTimingSound() }
-        timingTimeout = timeout; DispatchQueue.main.asyncAfter(deadline:.now()+90,execute:timeout)
-    }
-    func stopTimingSound() {
-        guard saved.timingSound else { return }
-        timingTimeout?.cancel(); timingTimeout = nil; saved.timingSound = false
-        saved.processingPaused = pausedBeforeTiming; changed(retry:true)
-    }
-    func matchDeviceTiming(groupID:String?) {
-        guard let groupID, let i = saved.outputGroups.firstIndex(where: { $0.id == groupID }) else { return }
-        let indices = saved.outputGroups[i].devices.indices.filter { j in
-            let r = saved.outputGroups[i].devices[j]
-            return r.enabled && outputs.contains { $0.uid == r.id }
-        }
-        guard indices.count>=2 else { notice = "Connect and enable at least two outputs to match their timing."; notify(); return }
-        let latencies = indices.map { j in outputs.first { $0.uid == saved.outputGroups[i].devices[j].id }?.reportedLatencyMS }
-        guard let offsets = LatencyAlignment.offsets(latencies) else {
-            notice = "macOS could not provide a usable timing estimate for every output. Existing delays were kept."; notify(); return
-        }
-        for (offset,j) in zip(offsets,indices) { saved.outputGroups[i].devices[j].delayMS = offset.rounded() }
-        saved.selectedGroupID = groupID
-        notice = "Initial timing matched using macOS device information. Listen to the timing sound to check the result."
-        changed(retry:true)
-    }
     func updateRoute(_ id:String, change:(inout DeviceRoute)->Void) {
         if let groupID = saved.selectedGroupID, let i = saved.outputGroups.firstIndex(where: { $0.id == groupID }),
            let j = saved.outputGroups[i].devices.firstIndex(where: { $0.id == id }) {
@@ -296,7 +274,7 @@ final class AppState {
             notice = "Each output can appear only once in a group."; notify(); return
         }
         if uid.isEmpty { saved.outputGroups[i].devices[index].id = "unassigned.\(UUID().uuidString)" }
-        else if let d = routingOutputs.first(where: { $0.uid == uid }) {
+        else if let d = outputDevice(for:uid) {
             let keepRoleName = saved.outputGroups[i].devices[index].id.hasPrefix("unassigned.")
             saved.outputGroups[i].devices[index].id = uid
             if !keepRoleName { saved.outputGroups[i].devices[index].name = d.name }
@@ -325,8 +303,8 @@ final class AppState {
     }
     #endif
     func shutdown() {
-        shuttingDown = true; timer?.invalidate(); timingTimeout?.cancel()
-        if saved.timingSound { saved.processingPaused = pausedBeforeTiming }
+        shuttingDown = true; timer?.invalidate()
+        if saved.timingSound { saved.processingPaused = true }
         saved.timingSound = false; observations.removeAll()
         for token in workspaceTokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }
         workspaceTokens.removeAll(); audio.stopSynchronously(); store.save(saved, immediately: true)

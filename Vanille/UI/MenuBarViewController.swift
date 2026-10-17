@@ -157,7 +157,7 @@ final class MenuBarViewController: NSViewController {
         groupPicker.setItems([("Current Output","current")]+state.saved.outputGroups.map { ($0.name,$0.id) },selected:state.saved.selectedGroupID ?? "current")
         let routes = state.deviceRoutes
         let rSignature = (state.saved.selectedGroupID ?? "current") + routes.map { route in
-            route.id + route.name + String(state.outputs.contains { $0.uid == route.id })
+            route.id + route.name + String(state.outputDevice(for:route.id) != nil)
         }.joined()
         if rSignature != routeSignature || routeList.arrangedSubviews.isEmpty {
             routeSignature = rSignature

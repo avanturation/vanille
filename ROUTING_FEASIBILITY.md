@@ -20,11 +20,11 @@
 | 종료/IOProc 해제/Aggregate 제거 | 모두 noErr | 검사 리소스 정상 정리 |
 | AirPlay device latency / safety offset | 둘 다 0 프레임 | 이것만 읽으면 경로 지연을 놓침 |
 | 추가 조사: AirPlay output stream latency | **9840 프레임 / 48kHz = 205ms** | OS가 보고한 초기 보정에 사용 가능 |
-| 유선 device latency + safety offset | 50 + 50 프레임 ≈ 2.083ms | Match Device Timing으로 유선에 203ms 적용 |
+| 유선 device latency + safety offset | 50 + 50 프레임 ≈ 2.083ms | 엔진이 유선에 약 202.917ms를 자동 적용 |
 
 두 AirPlay 항목 중 하나는 시스템 UI에서 HomePod mini 스테레오 페어로 보였습니다. 다른 항목의 스테레오 페어 구성을 별도로 검증하지 않았습니다. 하드웨어 UID, 네트워크 이름, 사설 장치 식별자는 공개 저장소에 포함하지 않습니다.
 
-사용자가 기준 타이밍 음원에서 MR4 선행을 확인한 뒤, 장치 속성뿐 아니라 `kAudioStreamPropertyLatency`까지 읽어 위 205ms를 찾았습니다. AVAudioEngine을 시작하지 않은 상태의 output-node presentation/device latency는 0을 반환하여 이 초기값의 근거로 사용하지 않았습니다. 출력을 합산하는 실제 코드와 UI에 스트림 지연을 반영했습니다. **203ms는 OS 보고값을 맞춘 초기 보정이며 실내 음향 동기화 검증 완료 값이 아닙니다.**
+사용자가 기준 타이밍 음원에서 MR4 선행을 확인한 뒤 `kAudioStreamPropertyLatency`를 읽어 위 205ms를 찾았습니다. 시작하지 않은 AVAudioEngine 노드가 반환한 0은 보정 근거로 사용하지 않았습니다. 최종 구현은 장치 상태가 바뀔 때마다 지연을 자동 계산하며 사용자 화면의 수동 Delay와 타이밍 맞추기 버튼을 제거했습니다. **이 값은 OS 보고값을 맞춘 보정이며 실내 음향 동기화 검증 완료 값은 아닙니다.**
 
 ## 공개 문서와 판단
 

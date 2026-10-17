@@ -2,6 +2,7 @@ import AppKit
 import CoreAudio
 import AVKit
 import Synchronization
+import Darwin
 
 final class AggregateProbe {
     let callbacks = Atomic<UInt64>(0)
@@ -133,7 +134,23 @@ final class RoutingLabDelegate:NSObject,NSApplicationDelegate {
             d["devices"] = ((try? HAL.objects(id,kAudioPlugInPropertyDeviceList)) ?? []).map(describe)
             return d
         }
-        let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"defaultOutputID":manager.defaultOutput(),"devices":devices,"boxes":boxes,"transportManagers":transports,"aggregateProbe":probeReport,"nodeLatencies":nodeLatencies]
+        let activeProcesses = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyProcessObjectList)) ?? []).filter {
+            (try? HAL.read($0,kAudioProcessPropertyIsRunningOutput,default:UInt32(0))) == 1
+        }.map { object -> [String:Any] in
+            let pid = (try? HAL.read(object,kAudioProcessPropertyPID,default:pid_t(0))) ?? 0
+            let app = NSRunningApplication(processIdentifier:pid)
+            var ancestors:[[String:Any]] = [], parent = pid
+            for _ in 0..<8 {
+                var info = proc_bsdinfo()
+                guard proc_pidinfo(parent,PROC_PIDTBSDINFO,0,&info,Int32(MemoryLayout<proc_bsdinfo>.size))>0,
+                      info.pbi_ppid>1, info.pbi_ppid != UInt32(parent) else { break }
+                parent = pid_t(info.pbi_ppid)
+                let p = NSRunningApplication(processIdentifier:parent)
+                ancestors.append(["pid":parent,"name":p?.localizedName ?? "","bundle":p?.bundleIdentifier ?? ""])
+            }
+            return ["pid":pid,"bundle":(try? HAL.string(object,kAudioProcessPropertyBundleID)) ?? "","name":app?.localizedName ?? "","url":app?.bundleURL?.path ?? "","ancestors":ancestors]
+        }
+        let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"defaultOutputID":manager.defaultOutput(),"devices":devices,"boxes":boxes,"transportManagers":transports,"aggregateProbe":probeReport,"nodeLatencies":nodeLatencies,"activeProcesses":activeProcesses]
         do {
             let data = try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys,.fragmentsAllowed])
             try data.write(to:path,options:.atomic)

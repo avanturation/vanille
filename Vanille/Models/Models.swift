@@ -75,6 +75,7 @@ struct SavedState: Codable {
     var deviceSettings: [String:DeviceRoute] = [:]
     // Deliberately absent from CodingKeys: test sound can never resume after an app restart.
     var timingSound = false
+    var manualTimingForVerification = false // Diagnostics only; never encoded or offered in product UI.
     init() {}
     enum CodingKeys: String, CodingKey {
         case schema, applications, eq, customPresets, profiles, selectedOutputUID, processingPaused

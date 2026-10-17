@@ -18,7 +18,7 @@
 - Desktop/HomePods/Immersive/Full Room 구성 슬롯과 사용자 그룹 편집·추가·삭제. 연결 불가 항목의 비활성화와 중복 장치 배정 방지.
 - 10-band Global EQ, 프리셋/사용자 프리셋, Preamp, Auto Headroom, limiter, DSP smoothing.
 - 처리 중지, 원본 복구, 초기 신호 확인 후 탭 mute, 콜백 감시, 장치/포맷 변화 처리, 상태 저장과 손상 복구.
-- macOS의 기기·stream·safety 지연을 읽는 Match Device Timing, 타이밍 테스트음과 수동 Delay. 테스트음의 자동 종료/재실행 방지를 구현했습니다.
+- macOS의 기기·stream·safety 정보를 읽어 항상 적용하는 **자동 지연 보정**. 사용자 지연 입력·스텝퍼·보정/테스트음 버튼을 제거했습니다. 진단용 타이밍 경로는 테스트에만 남겼습니다.
 - SMAppService 로그인 시 실행 및 기존 오디오 프로필 관리 코드.
 
 ## VERIFIED
@@ -30,10 +30,10 @@
 | 로컬 최적화 arm64 `.app` 빌드·실행 | 성공 |
 | ad-hoc 서명, 임시 staging bundle 검증 | 성공 |
 | 외부 패키지 / 웹 UI 런타임 | 없음 |
-| DSP·버퍼·설정 자동 검사 | **61개 통과** |
+| DSP·버퍼·설정 자동 검사 | **63개 통과** |
 | Xcode ARM64 CI, macOS 15 / 26 | `48f5385` 두 환경 통과; 최종 커밋도 CI 확인 후 이력에 기록 |
 
-61개 검사는 44.1/48/96kHz의 10개 밴드, 실제 PCM Gain/Mute, EQ와 Gain 동시 처리, headroom, limiter, 10ms ramp, planar/interleaved HAL 버퍼, 잘린 입력의 안전 중지, 짧은 소리의 신호 래치, 실제 출력별 impulse 지연, stereo polarity, 출력 mute 격리, 30ms 지연 변경 crossfade, 설정 migration/손상 복구, SPSC 동시 갱신을 포함합니다. 타이밍 음원의 pulse 간격·크기·종료와 재시작 안전성, 범위를 벗어난 앱 게인의 안전한 제한, OS 보고 지연의 계산과 알 수 없는 지연 거부도 검사했습니다.
+63개 검사는 44.1/48/96kHz의 10개 밴드, 실제 PCM Gain/Mute, EQ와 Gain 동시 처리, headroom, limiter, 10ms ramp, planar/interleaved HAL 버퍼, 잘린 입력의 안전 중지, 짧은 소리의 신호 래치, 실제 출력별 impulse 지연, stereo polarity, 출력 mute 격리, 30ms 지연 변경 crossfade, 설정 migration/손상 복구, SPSC 동시 갱신을 포함합니다. 진단 음원의 pulse/종료·재시작 안전성, 게인 제한, OS 지연 계산, 알 수 없는 지연 거부, AirPlay 세션 UID 변경과 모호한 endpoint 거부도 검사했습니다.
 
 ### 실제 유선 + AirPlay 신호 (03:44 KST)
 
@@ -70,12 +70,14 @@
 
 사용자가 Immersive의 MR4와 현재 HomePod에서 **양쪽 소리가 들림**을 확인했습니다. 초기 미디어 청취에서는 큰 차이와 HomePod 선행을 보고했습니다. 이후 **두 추가 지연을 0ms로 둔 네이티브 기준 음원에서는 MR4 선행**을 확인했습니다. 초기 수동값/플레이어 경로의 차이를 실내 지연 측정으로 혼동하지 않습니다.
 
-추가 하드웨어 조사에서 HomePod stream latency 205ms를 확인했고, `Match Device Timing`으로 유선의 약 2.083ms를 뺀 **MR4 203ms / AirPlay 0ms**가 실제 UI·설정·DSP 파라미터에 적용되는 것을 확인했습니다. 해당 설정으로 타이밍 음원을 재생했습니다. **보정 후 청취 동기화 완료와 장시간 유지에 대한 사용자 확인은 아직 없습니다.** 정확한 브라우저·콘텐츠와 두 HomePod 페어 모두의 동시 출력 여부도 확인하지 않았습니다.
+추가 조사에서 HomePod stream latency 205ms를 확인하여 유선의 약 2.083ms를 뺀 보정을 적용했습니다. 사용자의 최종 요구에 따라 보정은 엔진에서 자동 수행하며 모든 수동 지연 UI를 제거했습니다. **보정 후 청취 동기화 완료와 장시간 유지에 대한 사용자 확인은 아직 없습니다.** 두 HomePod 페어 모두의 동시 출력 여부도 확인하지 않았습니다.
+
+Safari에서 공개 YouTube Big Buck Bunny 영상을 실제 재생했고 활성 WebKit 오디오의 캡처·두 출력 처리 상태를 확인했습니다. Safari의 공개 localized service name인 `Safari Graphics and Media`를 통해 Safari 앱 이름/아이콘으로 묶도록 개선했습니다. 이 브라우저 검사는 세 출력 수락 검사를 대체하지 않습니다.
 
 ## PARTIAL
 
 - **Multi-Device Routing:** 유선 + 시스템 AirPlay 하나의 실제 IO·신호·독립 볼륨/지연은 확인했습니다. 두 HomePod 페어를 독립적인 시스템 출력으로 연결하지 못했습니다.
-- **동기화:** 실제 Delay와 OS 보고 stream 지연 기반 초기 보정은 구현·검사했습니다. 미보정 상태의 청취 차이가 확인됐으며, 203ms 보정 후 음향 동기화·장시간 drift 안정성은 미검증입니다. 자동 음향 측정은 없습니다.
+- **동기화:** 실제 Delay와 OS 보고 stream 지연 기반 자동 보정을 구현했습니다. 사용자 입력은 필요하지 않습니다. 음향 동기화·장시간 drift 안정성은 미검증이며 자동 음향 측정은 없습니다.
 - **시스템 오디오 범위:** 현재 기본 장치로 재생하며 공개 탭에서 캡처 가능한 활성 앱을 처리합니다. 다른 장치를 직접 선택한 앱, 우회 앱과 보호 오디오는 제외합니다. 매우 짧은 첫 알림음은 활성 프로세스 발견 전에 끝날 수 있어 원본으로 재생됩니다.
 - **원본 복구:** Pause/일반적인 엔진 중지·검사 리소스 해제를 확인했습니다. 권한 거부, 강제 종료, 잠자기/깨우기, 실제 네트워크 단절과 Core Audio 재시작을 모두 물리적으로 검사한 것은 아닙니다.
 - **DRM:** 수동 bypass 경로를 신호 검사했습니다. 실제 Netflix/TV+/보호된 Music 재생 검사는 하지 않았습니다. 보호 콘텐츠 자동 감지는 없습니다.

@@ -355,6 +355,7 @@ final class RoutingVerification:NSObject {
         for app in state.applications { test.applications[app.id] = AppVolume(bypass:app.id != fixtureID,name:app.name) }
         test.applications[fixtureID] = AppVolume(name:"Vanille Test Pulse")
         test.eq = EQSettings(); test.processingPaused = false
+        test.manualTimingForVerification = true
         let group = OutputGroup(id:"verification.two-output",name:"Verification",devices:outputs.map { DeviceRoute(id:$0.uid,name:$0.name) })
         test.outputGroups.append(group); test.selectedGroupID = group.id
         state.applyVerificationState(test); waitForEngine(0)
@@ -438,15 +439,16 @@ final class RoutingVerification:NSObject {
     }
     private func timingSoundStage(_ index:Int) {
         guard !finished else { return }
-        guard index<3 else { finish(); return }
+        guard index<4 else { finish(); return }
         if index>0 {
             var test = state.saved
             let g = test.outputGroups.firstIndex { $0.id == "verification.two-output" }!
             if index==1 { test.outputGroups[g].devices[1].delayMS = 400 }
+            else if index==2 { test.manualTimingForVerification = false }
             else { test.timingSound = false; test.processingPaused = true }
             state.applyVerificationState(test)
         }
-        DispatchQueue.main.asyncAfter(deadline:.now()+(index==2 ? 5 : 9)) {
+        DispatchQueue.main.asyncAfter(deadline:.now()+(index==3 ? 5 : 9)) {
             guard !self.finished else { return }
             let amplitudes = self.probes.map { $0.amplitude1000.load(ordering:.relaxed) }
             let a = self.probes[0].lastPulseEdge.load(ordering:.relaxed), b = self.probes[1].lastPulseEdge.load(ordering:.relaxed)
@@ -457,9 +459,13 @@ final class RoutingVerification:NSObject {
             let pass:Bool
             if index==0 { pass = amplitudes.allSatisfy { $0>0.0001 } && self.state.metrics.appIDs.isEmpty }
             else if index==1 { pass = abs(delay-0.4)<0.018 && amplitudes.allSatisfy { $0>0.0001 } }
-            else { pass = amplitudes.allSatisfy { $0<1e-8 } && !self.state.metrics.running }
-            let name = ["Built-in timing sound without application capture","Timing sound applies 400 ms per-device offset","Timing sound stops safely"][index]
-            self.entries.append(["test":name,"passed":pass,"amplitudes":amplitudes,"relativeDelayMS":delay*1000,"capturedApplications":self.state.metrics.appIDs.count])
+            else if index==2 {
+                let offsets = LatencyAlignment.offsets(self.outputs.map(\.reportedLatencyMS)) ?? []
+                let expected = offsets.count == 2 ? (offsets[1]-offsets[0])/1000 : 99
+                pass = abs(delay-expected)<0.018 && amplitudes.allSatisfy { $0>0.0001 }
+            } else { pass = amplitudes.allSatisfy { $0<1e-8 } && !self.state.metrics.running }
+            let name = ["Built-in timing sound without application capture","Timing sound applies 400 ms per-device offset","Automatic device timing changes actual output without user delay settings","Timing sound stops safely"][index]
+            self.entries.append(["test":name,"passed":pass,"amplitudes":amplitudes,"relativeDelayMS":delay*1000,"capturedApplications":self.state.metrics.appIDs.count,"appliedOutputDelaysMS":self.state.metrics.outputDelayMS])
             self.append(String(format:"%@ %@ · relative delay %.1f ms",pass ? "PASS" : "FAIL",name,delay*1000))
             self.timingSoundStage(index+1)
         }
@@ -475,7 +481,7 @@ final class RoutingVerification:NSObject {
             self.entries.append(["test":"Default system output unchanged","passed":self.state.devices.defaultOutput() == self.initialDefault])
             self.entries.append(["test":"No leaked tap or aggregate","passed":taps == self.initialTapCount && devices == self.initialDeviceCount])
             let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"outputs":self.outputs.map(\.name),"measurements":self.entries,
-                "allPassed":self.entries.count == 11 && self.entries.allSatisfy { $0["passed"] as? Bool == true },
+                "allPassed":self.entries.count == 12 && self.entries.allSatisfy { $0["passed"] as? Bool == true },
                 "scope":"Two actual HAL output streams only. No microphone or acoustic synchronization measurement; two independent HomePod pairs remain unavailable."]
             if let data = try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:self.root.appendingPathComponent("build/live-routing-results.json"),options:.atomic) }
             self.state.applyVerificationState(self.original); self.append("Test finished; original settings restored.")

@@ -1,6 +1,7 @@
 import Foundation
 
 struct DeviceRoute: Codable, Equatable, Identifiable {
+    static let systemAirPlayID = "system.airplay.current"
     var id: String // Core Audio Device UID, or an explicitly unassigned configuration slot.
     var name: String
     var enabled = true
@@ -11,6 +12,16 @@ struct DeviceRoute: Codable, Equatable, Identifiable {
     mutating func sanitize() {
         volume = volume.isFinite ? min(1,max(0,volume)) : 1
         delayMS = delayMS.isFinite ? min(3_000,max(0,delayMS)) : 0
+    }
+}
+
+enum OutputRouting {
+    static func device(for id:String,in outputs:[OutputDevice]) -> OutputDevice? {
+        if id == DeviceRoute.systemAirPlayID {
+            let airplay = outputs.filter(\.isAirPlay)
+            return airplay.count == 1 ? airplay[0] : nil
+        }
+        return outputs.first { $0.uid == id }
     }
 }
 

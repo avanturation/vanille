@@ -12,6 +12,13 @@ final class ProcessAudioManager {
                   (try? HAL.read(id, kAudioProcessPropertyIsRunningOutput, default: UInt32(0))) == 1 else { continue }
             let rawBundleID = (try? HAL.string(id, kAudioProcessPropertyBundleID)) ?? ""
             var running = NSRunningApplication(processIdentifier: pid)
+            if rawBundleID.hasPrefix("com.apple.WebKit."), let serviceName = running?.localizedName,
+               let owner = runningApps.filter({ app in
+                   guard let name = app.localizedName, name.count>=3, app.bundleURL?.pathExtension == "app" else { return false }
+                   return serviceName.hasPrefix(name+" ")
+               }).max(by: { ($0.localizedName?.count ?? 0)<($1.localizedName?.count ?? 0) }) {
+                running = owner
+            }
             if running?.bundleURL == nil {
                 var ancestor = pid
                 for _ in 0..<16 {
