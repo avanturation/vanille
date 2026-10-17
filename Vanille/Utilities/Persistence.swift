@@ -25,9 +25,13 @@ final class StateStore {
     func save(_ state: SavedState, immediately: Bool = false) {
         pending?.cancel()
         let destination = url
+        var durable = state
+        if durable.timingSound { durable.processingPaused = true }
+        durable.timingSound = false
+        let snapshot = durable
         let item = DispatchWorkItem {
             do {
-                let data = try JSONEncoder().encode(state)
+                let data = try JSONEncoder().encode(snapshot)
                 try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try data.write(to: destination, options: [.atomic])
             } catch { NSLog("Vanille settings save failed: %@", error.localizedDescription) }

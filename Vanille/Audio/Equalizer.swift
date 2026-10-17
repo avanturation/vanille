@@ -36,7 +36,10 @@ final class ParameterMailbox: @unchecked Sendable {
     static let eqMixIndex = maxSources
     static let preampIndex = maxSources + 1
     static let coefficientOffset = maxSources + 2
-    static let width = coefficientOffset + 10 * 5
+    static let maxOutputs = 8
+    static let outputOffset = coefficientOffset + 10 * 5
+    static let timingIndex = outputOffset + maxOutputs * 2
+    static let width = timingIndex + 1
     private let slots: UnsafeMutablePointer<Double>
     private let middle = Atomic<Int>(1)
     private var back = 2 // producer only
@@ -53,17 +56,24 @@ final class ParameterMailbox: @unchecked Sendable {
             for i in 0..<Self.maxSources { pointer[i] = 1 }
             pointer[Self.preampIndex] = 1
             for i in 0..<10 { pointer[Self.coefficientOffset + 5*i] = 1 }
+            for i in 0..<Self.maxOutputs { pointer[Self.outputOffset+i*2] = 1 }
         }
     }
     deinit { slots.deinitialize(count: Self.width * 3); slots.deallocate() }
 
-    func publish(gains: [Float], eq: EQSettings, sampleRate: Double) {
+    func publish(gains: [Float], eq: EQSettings, sampleRate: Double, outputs: [DeviceRoute] = [],timingSound:Bool = false) {
         let pointer = slots.advanced(by: back * Self.width)
         for i in 0..<Self.maxSources { pointer[i] = i < gains.count ? Double(gains[i]) : 1 }
         if cachedEQ != eq || cachedRate != sampleRate { cacheEQ(eq, sampleRate: sampleRate) }
         cachedEQValues.withUnsafeBufferPointer { source in
             pointer.advanced(by: Self.eqMixIndex).update(from: source.baseAddress!, count: 52)
         }
+        for i in 0..<Self.maxOutputs {
+            let output = i < outputs.count ? outputs[i] : nil
+            pointer[Self.outputOffset+i*2] = output.map { $0.enabled && !$0.muted ? Double($0.volume) : 0 } ?? 1
+            pointer[Self.outputOffset+i*2+1] = output.map { $0.delayMS*sampleRate/1000 } ?? 0
+        }
+        pointer[Self.timingIndex] = timingSound ? 1 : 0
         back = middle.exchange(back | 4, ordering: .acquiringAndReleasing) & 3
     }
     private func cacheEQ(_ eq: EQSettings, sampleRate: Double) {

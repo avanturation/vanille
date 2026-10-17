@@ -6,9 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private var eq: EqualizerWindowController?
     private var settings: SettingsWindowController?
-    private var terminationToken: NSObjectProtocol?
+    private var groups:OutputGroupsWindowController?
     #if VANILLE_DIAGNOSTICS
     private var verification: LiveVerification?
+    private var routingVerification:RoutingVerification?
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = MenuBarViewController(state:state)
         controller.showEQ = { [weak self] in self?.showEqualizer() }
         controller.showSettings = { [weak self] in self?.showSettings() }
+        controller.showGroups = { [weak self] in self?.showGroups() }
         controller.onSizeChange = { [weak self] in self?.popover.contentSize = $0 }
         popover.contentViewController = controller
         popover.contentSize = NSSize(width:348,height:430)
@@ -36,8 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appItem = NSMenuItem(); menu.addItem(appItem)
         let appMenu = NSMenu(title:"Vanille"); appItem.submenu = appMenu
         appMenu.addItem(withTitle:"Settings…",action:#selector(showSettings),keyEquivalent:",").target = self
+        appMenu.addItem(withTitle:"Output Groups…",action:#selector(showGroups),keyEquivalent:"g").target = self
         #if VANILLE_DIAGNOSTICS
         appMenu.addItem(withTitle:"Run Audio Verification…",action:#selector(runVerification),keyEquivalent:"t").target = self
+        appMenu.addItem(withTitle:"Run Multi-Output Verification…",action:#selector(runRoutingVerification),keyEquivalent:"r").target = self
         appMenu.addItem(withTitle:"Toggle Test Appearance",action:#selector(toggleTestAppearance),keyEquivalent:"d").target = self
         #endif
         appMenu.addItem(.separator())
@@ -78,6 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.performClose(nil)
         verification = LiveVerification(state: state); verification?.run()
     }
+    @objc private func runRoutingVerification() {
+        popover.performClose(nil)
+        routingVerification = RoutingVerification(state:state); routingVerification?.run()
+    }
     @objc private func toggleTestAppearance() {
         NSApp.appearance = NSApp.appearance?.name == .darkAqua ? nil : NSAppearance(named:.darkAqua)
     }
@@ -91,6 +99,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.performClose(nil)
         if settings == nil { settings = SettingsWindowController(state:state) }
         settings?.showWindow(nil); NSApp.activate(ignoringOtherApps:true); settings?.window?.makeKeyAndOrderFront(nil)
+    }
+    @objc func showGroups() {
+        popover.performClose(nil)
+        if groups == nil { groups = OutputGroupsWindowController(state:state) }
+        groups?.showWindow(nil); NSApp.activate(ignoringOtherApps:true); groups?.window?.makeKeyAndOrderFront(nil)
     }
     func applicationWillTerminate(_ notification:Notification) { state.shutdown() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication) -> Bool { false }

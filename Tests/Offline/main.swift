@@ -81,18 +81,82 @@ inList[0].mDataByteSize = UInt32(frames*8)
 let confirming = RenderContext(sampleRate:48_000,routes:[RenderRoute(left:0,right:1),RenderRoute(left:2,right:3)],initiallyReady:false)
 confirming.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outList.unsafeMutablePointer)
 check(l[frames-1] == 0 && r[frames-1] == 0 && confirming.signals[0].peak.load(ordering:.relaxed)>0,"Unconfirmed capture never replaces original output")
+inList[0].mDataByteSize = UInt32(frames*8)
+for i in 0..<(frames*2) { a[i] = 0 }
+confirming.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outList.unsafeMutablePointer)
+check(confirming.signals[0].capturedSignal.load(ordering:.acquiring),"Short captured sounds stay latched across later silent callbacks")
+for i in 0..<(frames*2) { a[i] = 0.1 }
 confirming.signals[0].ready.store(true,ordering:.releasing)
 confirming.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outList.unsafeMutablePointer)
 check(abs(l[frames-1]-0.1)<1e-5 && abs(r[frames-1]-0.1)<1e-5,"Only confirmed sources enter the output mix")
 a.deallocate(); b.deallocate(); c.deallocate(); l.deallocate(); r.deallocate(); inList.unsafeMutablePointer.deallocate(); outList.unsafeMutablePointer.deallocate()
 
+// Exercise the production output ring with independent hardware-stream parameters.
+let routeMailbox = ParameterMailbox()
+var outputRoutes = [DeviceRoute(id:"wired",name:"Wired"),DeviceRoute(id:"wireless",name:"Wireless")]
+outputRoutes[1].volume = 0.35; outputRoutes[1].delayMS = 120
+routeMailbox.publish(gains:[1],eq:EQSettings(),sampleRate:48_000,outputs:outputRoutes)
+let routeP = routeMailbox.consume()
+let mixer = OutputMixer(sampleRate:48_000,destinations:2)
+mixer.beginBlock(routeP)
+// Settle gain and read-head crossfades before an impulse.
+for _ in 0..<10_000 { mixer.push(left:0,right:0); _ = mixer.read(destination:0,parameters:routeP); _ = mixer.read(destination:1,parameters:routeP); mixer.advance() }
+var impulseFrames = [-1,-1], impulsePeaks = [0.0,0.0], rightPeaks = [0.0,0.0]
+for frame in 0..<7_000 {
+    mixer.push(left:frame == 0 ? 0.2 : 0,right:frame == 0 ? -0.1 : 0)
+    for destination in 0..<2 {
+        let signal = mixer.read(destination:destination,parameters:routeP)
+        if abs(signal.0)>impulsePeaks[destination] { impulsePeaks[destination] = abs(signal.0); impulseFrames[destination] = frame; rightPeaks[destination] = signal.1 }
+    }
+    mixer.advance()
+}
+check(impulseFrames == [0,5_760],"Per-device 120 ms offset delays actual PCM by exactly 5760 frames")
+check(abs(impulsePeaks[0]-0.2)<1e-9 && abs(impulsePeaks[1]-0.07)<1e-8,"Independent output volumes change only their own PCM stream")
+check(abs(rightPeaks[0]+0.1)<1e-9 && abs(rightPeaks[1]+0.035)<1e-8,"Per-output delay preserves stereo channel polarity and level")
+outputRoutes[1].muted = true
+routeMailbox.publish(gains:[1],eq:EQSettings(),sampleRate:48_000,outputs:outputRoutes)
+let mutedP = routeMailbox.consume(); mixer.beginBlock(mutedP)
+var mutedPeak = 0.0, wiredPeak = 0.0
+for frame in 0..<7_000 {
+    mixer.push(left:0.1,right:0.1)
+    let wired = mixer.read(destination:0,parameters:mutedP), wireless = mixer.read(destination:1,parameters:mutedP)
+    if frame>6_000 { mutedPeak = max(mutedPeak,abs(wireless.0)); wiredPeak = max(wiredPeak,abs(wired.0)) }
+    mixer.advance()
+}
+check(mutedPeak == 0 && abs(wiredPeak-0.1)<1e-9,"Muting one output leaves another output playing")
+// A changed delay blends two fixed read heads rather than jumping samples.
+outputRoutes[0].delayMS = 3_000
+routeMailbox.publish(gains:[1],eq:EQSettings(),sampleRate:48_000,outputs:outputRoutes)
+let delayedP = routeMailbox.consume(); mixer.beginBlock(delayedP)
+var last = 0.1, delta = 0.0
+for _ in 0..<1_500 { mixer.push(left:0.1,right:0.1); let signal = mixer.read(destination:0,parameters:delayedP); _ = mixer.read(destination:1,parameters:delayedP); delta = max(delta,abs(signal.0-last)); last = signal.0; mixer.advance() }
+check(delta<=0.1/1440+1e-9 && last==0,"Delay changes crossfade over 30 ms without a discontinuous jump")
+let timing = TimingPulse(sampleRate:48_000)
+var timingPeak = 0.0, betweenPulsesPeak = 0.0
+for frame in 0..<192_000 {
+    let signal = abs(timing.sample(enabled:true)); timingPeak = max(timingPeak,signal)
+    if frame>4_800 { betweenPulsesPeak = max(betweenPulsesPeak,signal) }
+}
+check(timingPeak>0.029 && timingPeak<=0.03 && betweenPulsesPeak==0,"Timing sound emits a bounded 100 ms pulse every four seconds")
+for _ in 0..<480 { _ = timing.sample(enabled:false) }
+check(timing.sample(enabled:false)==0,"Stopping the timing sound fades its generator to silence")
+
 let temp = FileManager.default.temporaryDirectory.appendingPathComponent("VanilleTests-\(UUID().uuidString)/settings.json")
 let store = StateStore(url:temp)
 var saved = SavedState(); saved.applications["test.bundle"] = AppVolume(volume:0.42,muted:true,bypass:true,name:"Test")
 saved.eq = boost; saved.profiles[0].outputUID = "stable-device-uid"
+saved.outputGroups[0].devices = outputRoutes; saved.selectedGroupID = saved.outputGroups[0].id
 store.save(saved,immediately:true)
 let restored = StateStore(url:temp).load()
 check(restored.applications["test.bundle"] == saved.applications["test.bundle"] && restored.eq == saved.eq && restored.profiles[0].outputUID == "stable-device-uid","Persistent settings round-trip by Bundle ID and Device UID")
+check(restored.outputGroups == saved.outputGroups && restored.selectedGroupID == saved.selectedGroupID,"Output groups retain independent volume, mute and millisecond offsets")
+let oldData = try! JSONSerialization.data(withJSONObject:["schema":1,"processingPaused":true])
+let migrated = try! JSONDecoder().decode(SavedState.self,from:oldData)
+check(migrated.outputGroups.count == 4 && migrated.processingPaused,"Existing settings migrate safely to editable output groups")
+var transient = saved; transient.timingSound = true; transient.processingPaused = false
+store.save(transient,immediately:true)
+let safeRestart = StateStore(url:temp).load()
+check(!safeRestart.timingSound && safeRestart.processingPaused,"Timing tests never restart automatically after a crash or relaunch")
 try! Data("broken".utf8).write(to:temp)
 let corrupt = StateStore(url:temp); let fallback = corrupt.load()
 check(corrupt.loadWarning != nil && fallback.eq == EQSettings(),"Corrupt settings recover to safe defaults")

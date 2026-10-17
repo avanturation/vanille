@@ -1,5 +1,9 @@
 import AppKit
 
+private final class TopAlignedStackView:NSStackView {
+    override var isFlipped:Bool { true }
+}
+
 final class ActionButton: NSButton {
     var actionHandler: (() -> Void)?
     convenience init(_ title: String, action: @escaping () -> Void) {
@@ -61,6 +65,11 @@ enum UI {
     }
     static func vertical(_ views: [NSView] = [], spacing: CGFloat = 10) -> NSStackView {
         let stack = NSStackView(views: views); stack.orientation = .vertical
+        stack.spacing = spacing; stack.alignment = .leading
+        return stack
+    }
+    static func documentStack(spacing:CGFloat = 10) -> NSStackView {
+        let stack = TopAlignedStackView(); stack.orientation = .vertical
         stack.spacing = spacing; stack.alignment = .leading
         return stack
     }

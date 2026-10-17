@@ -12,6 +12,7 @@ private struct TapHandle {
 
 final class SourceSignal: @unchecked Sendable {
     let peak = Atomic<Double>(0)
+    let capturedSignal = Atomic<Bool>(false)
     let ready: Atomic<Bool>
     init(ready: Bool) { self.ready = Atomic(ready) }
 }
@@ -32,6 +33,9 @@ final class RenderContext: @unchecked Sendable {
     let mailbox = ParameterMailbox()
     let dsp: StereoDSP
     let routes: [RenderRoute]
+    let destinations: [RenderRoute]
+    let outputMixer: OutputMixer
+    let timingPulse:TimingPulse
     let signals: [SourceSignal]
     let suppressOutput = Atomic<Bool>(false)
     private let sourcePeaks: UnsafeMutablePointer<Double>
@@ -46,8 +50,12 @@ final class RenderContext: @unchecked Sendable {
     let clipped = Atomic<UInt64>(0)
     static let maximumFrames = 16_384
 
-    init(sampleRate: Double, routes: [RenderRoute], initiallyReady: Bool = true) {
+    init(sampleRate: Double, routes: [RenderRoute], initiallyReady: Bool = true,
+         destinations: [RenderRoute] = [RenderRoute(left:0,right:1)]) {
         self.routes = routes
+        self.destinations = destinations
+        outputMixer = OutputMixer(sampleRate:sampleRate,destinations:destinations.count)
+        timingPulse = TimingPulse(sampleRate:sampleRate)
         signals = routes.map { _ in SourceSignal(ready: initiallyReady) }
         sourcePeaks = .allocate(capacity: max(1,routes.count))
         sourcePeaks.initialize(repeating: 0, count: max(1,routes.count))
@@ -56,14 +64,14 @@ final class RenderContext: @unchecked Sendable {
         dsp = StereoDSP(sampleRate: sampleRate, mailbox: mailbox)
         inputPointers = .allocate(capacity: max(2, routes.count*2))
         inputPointers.initialize(repeating: ChannelPointer(), count: max(2, routes.count*2))
-        outputPointers = .allocate(capacity: 2)
-        outputPointers.initialize(repeating: ChannelPointer(), count: 2)
+        outputPointers = .allocate(capacity: destinations.count*2)
+        outputPointers.initialize(repeating: ChannelPointer(), count: destinations.count*2)
     }
     deinit {
         sourcePeaks.deinitialize(count:max(1,routes.count)); sourcePeaks.deallocate()
         sourceReady.deinitialize(count:max(1,routes.count)); sourceReady.deallocate()
         inputPointers.deinitialize(count: max(2,routes.count*2)); inputPointers.deallocate()
-        outputPointers.deinitialize(count: 2); outputPointers.deallocate()
+        outputPointers.deinitialize(count: destinations.count*2); outputPointers.deallocate()
     }
     @inline(__always) private func channel(_ channel: Int, in buffers: UnsafeMutableAudioBufferListPointer) -> ChannelPointer {
         var start = 0
@@ -82,12 +90,18 @@ final class RenderContext: @unchecked Sendable {
         let outputs = UnsafeMutableAudioBufferListPointer(output)
         for buffer in outputs { if let data = buffer.mData { memset(data, 0, Int(buffer.mDataByteSize)) } }
         if suppressOutput.load(ordering: .relaxed) { return }
-        outputPointers[0] = channel(0, in: outputs); outputPointers[1] = channel(1, in: outputs)
-        guard let leftOut = outputPointers[0].data, let rightOut = outputPointers[1].data else {
-            fault.store(true, ordering: .relaxed); return
+        for destination in destinations.indices {
+            outputPointers[destination*2] = channel(destinations[destination].left,in:outputs)
+            outputPointers[destination*2+1] = channel(destinations[destination].right,in:outputs)
+            if outputPointers[destination*2].data == nil || outputPointers[destination*2+1].data == nil {
+                fault.store(true,ordering:.relaxed); return
+            }
         }
         let frames = min(outputPointers[0].frames, outputPointers[1].frames)
         guard frames > 0, frames <= Self.maximumFrames else { fault.store(true, ordering: .relaxed); return }
+        for i in 0..<(destinations.count*2) where outputPointers[i].frames != frames {
+            fault.store(true,ordering:.relaxed); return
+        }
         for source in routes.indices {
             sourcePeaks[source] = 0
             sourceReady[source] = signals[source].ready.load(ordering: .acquiring)
@@ -98,6 +112,7 @@ final class RenderContext: @unchecked Sendable {
             }
         }
         let p = mailbox.consume()
+        outputMixer.beginBlock(p)
         var inputEnergy = 0.0, outputEnergy = 0.0
         for frame in 0..<frames {
             var left = 0.0, right = 0.0
@@ -110,13 +125,26 @@ final class RenderContext: @unchecked Sendable {
                 sourcePeaks[source] = max(sourcePeaks[source],max(abs(a),abs(b)))
                 if sourceReady[source] { left += a*gain; right += b*gain }
             }
-            let result = dsp.process(left: left, right: right, parameters: p)
-            leftOut[frame*outputPointers[0].stride] = Float(result.0)
-            rightOut[frame*outputPointers[1].stride] = Float(result.1)
+            let timing = timingPulse.sample(enabled:p[ParameterMailbox.timingIndex]>0.5)
+            let result = dsp.process(left: left+timing, right: right+timing, parameters: p)
+            outputMixer.push(left:result.0,right:result.1)
+            for destination in destinations.indices {
+                let routed = outputMixer.read(destination:destination,parameters:p)
+                outputPointers[destination*2].data![frame*outputPointers[destination*2].stride] = Float(routed.0)
+                outputPointers[destination*2+1].data![frame*outputPointers[destination*2+1].stride] = Float(routed.1)
+            }
+            outputMixer.advance()
             outputEnergy += (result.0*result.0+result.1*result.1)*0.5
         }
         inputRMS.store(sqrt(inputEnergy / Double(frames)), ordering: .relaxed)
-        for source in routes.indices { signals[source].peak.store(sourcePeaks[source],ordering:.relaxed) }
+        for source in routes.indices {
+            signals[source].peak.store(sourcePeaks[source],ordering:.relaxed)
+            // Latch short sounds until the control queue can confirm them. A periodic UI/control
+            // poll must not miss a notification, click, or a short test pulse between polls.
+            if sourcePeaks[source] > 1e-7 && !sourceReady[source] {
+                signals[source].capturedSignal.store(true,ordering:.releasing)
+            }
+        }
         outputRMS.store(sqrt(outputEnergy / Double(frames)), ordering: .relaxed)
         sampleFrames.wrappingAdd(UInt64(frames), ordering: .relaxed)
         clipped.store(dsp.limitedSamples, ordering: .relaxed)
@@ -139,6 +167,7 @@ struct EngineMetrics {
     var outputRMS: Double = 0
     var limitedSamples: UInt64 = 0
     var originalAudioIDs: Set<String> = []
+    var outputUIDs: [String] = []
     var error: String?
 }
 
@@ -155,20 +184,29 @@ final class AudioEngine {
     private var observations: [HALObservation] = []
     private let needsRebuild = Atomic<Bool>(false)
     private var activationFailures: Set<Int> = []
+    private var routedDevices: [OutputDevice] = []
+    private var routeSettings: [DeviceRoute] = []
+    private var timingSound = false
     private(set) var sampleRate = 48_000.0
     var appIDs: [String] { taps.map(\.appID) }
 
-    func start(apps: [AudioApplication], device: OutputDevice, settings: SavedState, queue: DispatchQueue) throws {
+    func start(apps: [AudioApplication], device: OutputDevice, outputs: [OutputDevice], routes outputSettings: [DeviceRoute],
+               settings: SavedState, queue: DispatchQueue) throws {
         stop()
-        guard !apps.isEmpty else { return }
+        guard !apps.isEmpty || settings.timingSound else { return }
+        guard !outputs.isEmpty, outputs.count <= ParameterMailbox.maxOutputs, outputSettings.count == outputs.count else {
+            throw AudioFailure(operation:"Choose one to eight connected outputs",status:kAudioHardwareUnsupportedOperationError)
+        }
         guard apps.count <= ParameterMailbox.maxSources else {
             throw AudioFailure(operation: "Too many applications. Processing is paused", status: kAudioHardwareUnsupportedOperationError)
         }
-        guard device.channels == 2, device.sampleRate >= 32_000, device.sampleRate <= 192_000 else {
+        let clock = outputs.first(where: { !$0.isAirPlay }) ?? outputs[0]
+        guard outputs.allSatisfy({ $0.channels == 2 && $0.sampleRate >= 32_000 && $0.sampleRate <= 192_000 }) else {
             throw AudioFailure(operation: "Processing requires a stereo output at 32–192 kHz", status: kAudioHardwareUnsupportedOperationError)
         }
         do {
-            sampleRate = device.sampleRate
+            sampleRate = clock.sampleRate
+            routedDevices = outputs; routeSettings = outputSettings
             for app in apps {
                 let description = CATapDescription(stereoMixdownOfProcesses: app.processes)
                 description.name = "Vanille · \(app.name)"
@@ -193,21 +231,26 @@ final class AudioEngine {
                 kAudioAggregateDeviceUIDKey: "com.avanturation.Vanille.\(UUID().uuidString)",
                 kAudioAggregateDeviceIsPrivateKey: true,
                 kAudioAggregateDeviceIsStackedKey: false,
-                kAudioAggregateDeviceMainSubDeviceKey: device.uid,
-                kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: device.uid]],
+                kAudioAggregateDeviceMainSubDeviceKey: clock.uid,
+                kAudioAggregateDeviceSubDeviceListKey: outputs.map { d in
+                    [kAudioSubDeviceUIDKey:d.uid,kAudioSubDeviceDriftCompensationKey:d.uid != clock.uid] as [String:Any]
+                },
                 kAudioAggregateDeviceTapListKey: taps.map {
                     [kAudioSubTapUIDKey: $0.uid, kAudioSubTapDriftCompensationKey: true] as [String: Any]
                 },
                 kAudioAggregateDeviceTapAutoStartKey: false
             ]
             try HAL.check(AudioHardwareCreateAggregateDevice(composition as CFDictionary, &aggregate), "Create audio processing output")
+            guard try HAL.strings(aggregate,kAudioAggregateDevicePropertyFullSubDeviceList) == outputs.map(\.uid) else {
+                throw AudioFailure(operation:"Unexpected output stream order. Original audio kept",status:kAudioDeviceUnsupportedFormatError)
+            }
             // Retain the hardware's rate; no device-wide sample-rate writes are made.
             let actualRate = try HAL.read(aggregate, kAudioDevicePropertyNominalSampleRate, default: Double(0))
             guard abs(actualRate-sampleRate) < 1 else {
                 throw AudioFailure(operation: "Output clock is not ready", status: kAudioDeviceUnsupportedFormatError)
             }
             let inputs = try HAL.objects(aggregate, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput)
-            let physicalInputs = try HAL.objects(device.id, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput).count
+            let physicalInputs = try outputs.reduce(0) { total,d in total + (try HAL.objects(d.id,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeInput).count) }
             guard inputs.count == physicalInputs + taps.count else {
                 throw AudioFailure(operation: "Unexpected tap stream layout", status: kAudioDeviceUnsupportedFormatError)
             }
@@ -226,17 +269,21 @@ final class AudioEngine {
                 guard first > 0 else { throw AudioFailure(operation: "Invalid channel map", status: kAudioDeviceUnsupportedFormatError) }
                 routes.append(RenderRoute(left: Int(first)-1, right: Int(first)))
             }
-            let outputs = try HAL.objects(aggregate, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeOutput)
+            let outputStreams = try HAL.objects(aggregate, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeOutput)
             var outputChannels: UInt32 = 0
-            for stream in outputs {
+            for stream in outputStreams {
                 let f = try HAL.read(stream, kAudioStreamPropertyVirtualFormat, default: AudioStreamBasicDescription())
                 guard Self.supports(f), abs(f.mSampleRate-sampleRate) < 1 else {
                     throw AudioFailure(operation: "Incompatible output stream", status: kAudioDeviceUnsupportedFormatError)
                 }
                 outputChannels += f.mChannelsPerFrame
             }
-            guard outputChannels == 2 else { throw AudioFailure(operation: "Stereo output unavailable", status: kAudioDeviceUnsupportedFormatError) }
-            let renderContext = RenderContext(sampleRate: sampleRate, routes: routes, initiallyReady: false)
+            guard outputChannels == outputs.count*2,
+                  try HAL.objects(aggregate,kAudioAggregateDevicePropertyActiveSubDeviceList).count == outputs.count else {
+                throw AudioFailure(operation:"An output disconnected before routing started",status:kAudioDeviceUnsupportedFormatError)
+            }
+            let renderContext = RenderContext(sampleRate: sampleRate, routes: routes, initiallyReady: false,
+                destinations:outputs.indices.map { RenderRoute(left:$0*2,right:$0*2+1) })
             context = renderContext
             update(settings)
             try HAL.check(AudioDeviceCreateIOProcID(aggregate, vanilleIOProc,
@@ -247,8 +294,10 @@ final class AudioEngine {
             for scope in [kAudioObjectPropertyScopeInput, kAudioObjectPropertyScopeOutput] {
                 if let o = HALObservation(aggregate, kAudioDevicePropertyStreamConfiguration, scope: scope, queue: queue, change: { [weak self] in self?.needsRebuild.store(true, ordering: .relaxed) }) { observations.append(o) }
             }
-            for selector in [kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyDeviceIsAlive] {
-                if let o = HALObservation(device.id, selector, queue: queue, change: { [weak self] in self?.needsRebuild.store(true, ordering: .relaxed) }) { observations.append(o) }
+            for d in outputs + [device] {
+                for selector in [kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyDeviceIsAlive] {
+                    if let o = HALObservation(d.id, selector, queue: queue, change: { [weak self] in self?.needsRebuild.store(true, ordering: .relaxed) }) { observations.append(o) }
+                }
             }
             try HAL.check(AudioDeviceStart(aggregate, ioProc), "Start processing (system audio permission may be required)")
             startedAt = Date(); lastCallbackAt = startedAt; lastCallbackCount = 0
@@ -259,11 +308,7 @@ final class AudioEngine {
         && f.mFormatFlags & kAudioFormatFlagIsBigEndian == 0 && f.mBitsPerChannel == 32
     }
     private func tapOrder() throws -> [String] {
-        var result: Unmanaged<CFArray>?
-        var size = UInt32(MemoryLayout<Unmanaged<CFArray>?>.size)
-        var a = HAL.address(kAudioAggregateDevicePropertyTapList)
-        try HAL.check(AudioObjectGetPropertyData(aggregate, &a, 0, nil, &size, &result), "Read tap order")
-        return result?.takeRetainedValue() as? [String] ?? []
+        try HAL.strings(aggregate,kAudioAggregateDevicePropertyTapList)
     }
     private func disablePhysicalInputs(count: Int, total: Int) throws {
         guard count > 0, let ioProc else { return }
@@ -280,16 +325,18 @@ final class AudioEngine {
         var a = HAL.address(kAudioDevicePropertyIOProcStreamUsage, scope: kAudioObjectPropertyScopeInput)
         try HAL.check(AudioObjectSetPropertyData(aggregate, &a, 0, nil, UInt32(bytes), data), "Exclude physical input streams")
     }
-    func update(_ settings: SavedState) {
+    func update(_ settings: SavedState, routes: [DeviceRoute]? = nil) {
+        if let routes { routeSettings = routes }
+        timingSound = settings.timingSound
         context?.mailbox.publish(gains: appIDs.map {
             let v = settings.applications[$0] ?? AppVolume()
             return v.muted ? 0 : v.volume
-        }, eq: settings.eq, sampleRate: sampleRate)
+        }, eq: settings.eq, sampleRate: sampleRate, outputs:routeSettings,timingSound:timingSound)
     }
     func metrics() -> EngineMetrics {
         guard let context else { return EngineMetrics() }
         for index in taps.indices where !context.signals[index].ready.load(ordering: .relaxed)
-            && !activationFailures.contains(index) && context.signals[index].peak.load(ordering: .relaxed) > 1e-7 {
+            && !activationFailures.contains(index) && context.signals[index].capturedSignal.load(ordering: .acquiring) {
             let description = taps[index].description
             description.muteBehavior = .mutedWhenTapped
             do {
@@ -306,12 +353,13 @@ final class AudioEngine {
         if count != lastCallbackCount { lastCallbackAt = Date(); lastCallbackCount = count }
         let timedOut = Date().timeIntervalSince(lastCallbackAt) > 1.5
         let invalid = context.fault.load(ordering: .relaxed) || needsRebuild.load(ordering: .relaxed)
-        var result = EngineMetrics(appIDs: active, running: count > 0 && !active.isEmpty, callbacks: count,
+        var result = EngineMetrics(appIDs: active, running: count > 0 && (!active.isEmpty || timingSound), callbacks: count,
             sampleFrames: context.sampleFrames.load(ordering: .relaxed),
             inputRMS: context.inputRMS.load(ordering: .relaxed), outputRMS: context.outputRMS.load(ordering: .relaxed),
             limitedSamples: context.clipped.load(ordering: .relaxed))
         if Date().timeIntervalSince(startedAt) > 2 { result.originalAudioIDs = Set(appIDs).subtracting(active) }
-        if active.isEmpty && Date().timeIntervalSince(startedAt) > 3 {
+        result.outputUIDs = routedDevices.map(\.uid)
+        if active.isEmpty && !timingSound && Date().timeIntervalSince(startedAt) > 12 {
             result.error = "No processable audio was received. Original audio is playing. Check audio permission or use Protected Content Bypass."
             stop(); return result
         }
@@ -361,6 +409,7 @@ final class AudioEngine {
         }
         taps.removeAll()
         activationFailures.removeAll()
+        routedDevices.removeAll(); routeSettings.removeAll(); timingSound = false
         // IOProc has been unregistered, so all realtime storage can now be reclaimed.
         context = nil
     }
@@ -387,16 +436,27 @@ final class AudioController: @unchecked Sendable {
         }
         watchdog = timer; timer.resume()
     }
-    func reconcile(apps: [AudioApplication], output: OutputDevice?, state: SavedState, retry: Bool = false) {
+    func reconcile(apps: [AudioApplication], output: OutputDevice?, availableOutputs: [OutputDevice] = [], state: SavedState, retry: Bool = false) {
         queue.async { [self] in
+            let configured = state.outputGroups.first(where: { $0.id == state.selectedGroupID })?.devices ?? output.map {
+                [state.deviceSettings[$0.uid] ?? DeviceRoute(id:$0.uid,name:$0.name)]
+            } ?? []
+            let available = availableOutputs.isEmpty ? output.map { [$0] } ?? [] : availableOutputs
+            let pairs = configured.filter(\.enabled).compactMap { route -> (OutputDevice,DeviceRoute)? in
+                guard let device = available.first(where: { $0.uid == route.id }) else { return nil }
+                return (device,route)
+            }
+            let destinations = pairs.map { $0.0 }, routes = pairs.map { $0.1 }
             let candidates = apps.filter { app in
                 !(state.applications[app.id]?.bypass ?? false)
                 && (output.map { app.outputDevices.contains($0.id) } ?? false)
             }
-            let desired = state.processingPaused || output == nil ? "" :
-                "\(output!.uid):\(output!.sampleRate):" + candidates.map { "\($0.id)=\($0.processes.sorted())" }.joined(separator: ";")
+            let desired = state.processingPaused || output == nil || destinations.isEmpty ? "" :
+                "\(output!.uid):\(output!.sampleRate):" + destinations.map { "\($0.uid):\($0.sampleRate)" }.joined(separator:",")
+                + ":timing=\(state.timingSound):"
+                + candidates.map { "\($0.id)=\($0.processes.sorted())" }.joined(separator: ";")
             if retry { failedSignature = nil; lastError = nil }
-            if desired.isEmpty || candidates.isEmpty {
+            if desired.isEmpty || (candidates.isEmpty && !state.timingSound) {
                 engine.stop(); signature = ""; currentMetrics = EngineMetrics()
                 if state.processingPaused { lastError = nil; failedSignature = nil }
                 return
@@ -405,13 +465,13 @@ final class AudioController: @unchecked Sendable {
             if desired != signature {
                 engine.stop(); signature = ""
                 do {
-                    try engine.start(apps: candidates, device: output!, settings: state, queue: queue)
+                    try engine.start(apps: candidates, device: output!, outputs:destinations, routes:routes, settings: state, queue: queue)
                     signature = desired; lastError = nil
                 } catch {
                     lastError = error.localizedDescription; failedSignature = desired
                     engine.stop(); currentMetrics = EngineMetrics()
                 }
-            } else { engine.update(state) }
+            } else { engine.update(state,routes:routes) }
         }
     }
     func snapshot(_ completion: @escaping (EngineMetrics) -> Void) {

@@ -6,6 +6,7 @@ final class ToneState: @unchecked Sendable {
     let amplitude = Atomic<Double>(0.005)
     let frequency = Atomic<Double>(1000)
     var phase = 0.0 // render thread only
+    var position = 0
 }
 final class ToneDelegate: NSObject, NSApplicationDelegate {
     let engine = AVAudioEngine()
@@ -26,6 +27,7 @@ final class ToneDelegate: NSObject, NSApplicationDelegate {
         stack.centerYAnchor.constraint(equalTo:window.contentView!.centerYAnchor).isActive = true
         let format = engine.outputNode.inputFormat(forBus:0)
         let sampleRate = format.sampleRate
+        let pulsed = Bundle.main.object(forInfoDictionaryKey:"VanilleTestPulsed") as? Bool ?? false
         let stereo = AVAudioFormat(standardFormatWithSampleRate:sampleRate,channels:2)!
         let state = tone
         let node = AVAudioSourceNode(format:stereo) { _, _, frames, output in
@@ -33,7 +35,10 @@ final class ToneDelegate: NSObject, NSApplicationDelegate {
             let amplitude = state.amplitude.load(ordering:.relaxed)
             let increment = 2*Double.pi*state.frequency.load(ordering:.relaxed)/sampleRate
             for frame in 0..<Int(frames) {
-                let sample = Float(sin(state.phase)*amplitude)
+                let pulsePosition = Double(state.position)/sampleRate
+                let envelope = pulsed ? max(0,min(1,pulsePosition/0.005,(0.1-pulsePosition)/0.005)) : 1
+                let sample = Float(sin(state.phase)*amplitude*envelope)
+                state.position += 1; if state.position >= Int(sampleRate) { state.position = 0 }
                 state.phase += increment; if state.phase >= 2*Double.pi { state.phase -= 2*Double.pi }
                 for buffer in buffers { if let data = buffer.mData { data.assumingMemoryBound(to:Float.self)[frame] = sample } }
             }

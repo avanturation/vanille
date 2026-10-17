@@ -36,11 +36,14 @@ final class ProcessAudioManager {
                 return URL(fileURLWithPath: NSString.path(withComponents: Array(components.prefix(index + 1))))
             }
             let bundle = outerURL.flatMap(Bundle.init(url:))
-            let bundleID = bundle?.bundleIdentifier ?? rawBundleID
-            guard !bundleID.isEmpty, bundleID != Bundle.main.bundleIdentifier else { continue }
+            let identified = bundle?.bundleIdentifier ?? rawBundleID
+            guard identified != Bundle.main.bundleIdentifier else { continue }
+            // Command-line players and short system sounds can have no bundle. Give them one
+            // explicit logical group instead of silently excluding them from system routing.
+            let bundleID = identified.isEmpty ? "com.avanturation.Vanille.OtherSystemAudio" : identified
             let name = (bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
                 ?? (bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                ?? running?.localizedName ?? bundleID
+                ?? running?.localizedName ?? (identified.isEmpty ? "Other System Audio" : bundleID)
             let devices = Set((try? HAL.objects(id, kAudioProcessPropertyDevices, scope: kAudioObjectPropertyScopeOutput)) ?? [])
             if var group = groups[bundleID] {
                 group.processes.append(id); group.pids.append(pid); group.outputDevices.formUnion(devices)

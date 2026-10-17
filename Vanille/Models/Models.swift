@@ -70,6 +70,30 @@ struct SavedState: Codable {
     var profiles = AudioProfile.defaults
     var selectedOutputUID: String?
     var processingPaused = true
+    var outputGroups = OutputGroup.defaults
+    var selectedGroupID: String?
+    var deviceSettings: [String:DeviceRoute] = [:]
+    // Deliberately absent from CodingKeys: test sound can never resume after an app restart.
+    var timingSound = false
+    init() {}
+    enum CodingKeys: String, CodingKey {
+        case schema, applications, eq, customPresets, profiles, selectedOutputUID, processingPaused
+        case outputGroups, selectedGroupID, deviceSettings
+    }
+    init(from decoder:Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy:CodingKeys.self)
+        schema = try c.decodeIfPresent(Int.self,forKey:.schema) ?? 1
+        applications = try c.decodeIfPresent([String:AppVolume].self,forKey:.applications) ?? applications
+        eq = try c.decodeIfPresent(EQSettings.self,forKey:.eq) ?? eq
+        customPresets = try c.decodeIfPresent([EQPreset].self,forKey:.customPresets) ?? []
+        profiles = try c.decodeIfPresent([AudioProfile].self,forKey:.profiles) ?? profiles
+        selectedOutputUID = try c.decodeIfPresent(String.self,forKey:.selectedOutputUID)
+        processingPaused = try c.decodeIfPresent(Bool.self,forKey:.processingPaused) ?? true
+        outputGroups = try c.decodeIfPresent([OutputGroup].self,forKey:.outputGroups) ?? outputGroups
+        selectedGroupID = try c.decodeIfPresent(String.self,forKey:.selectedGroupID)
+        deviceSettings = try c.decodeIfPresent([String:DeviceRoute].self,forKey:.deviceSettings) ?? [:]
+    }
 
     mutating func sanitize() {
         eq.sanitize()
@@ -78,6 +102,12 @@ struct SavedState: Codable {
             applications[key]!.volume = value.isFinite ? min(1, max(0, value)) : 1
         }
         for i in profiles.indices { profiles[i].eq.sanitize() }
+        for i in outputGroups.indices {
+            var seen: Set<String> = []
+            outputGroups[i].devices = outputGroups[i].devices.filter { seen.insert($0.id).inserted }.prefix(8).map { var d = $0; d.sanitize(); return d }
+        }
+        for key in Array(deviceSettings.keys) { deviceSettings[key]?.sanitize() }
+        if !outputGroups.contains(where: { $0.id == selectedGroupID }) { selectedGroupID = nil }
         customPresets = customPresets.filter { $0.gains.count == 10 && $0.gains.allSatisfy(\.isFinite) }
         for i in customPresets.indices {
             customPresets[i].gains = customPresets[i].gains.map { min(12, max(-12, $0)) }

@@ -9,23 +9,31 @@ final class OutputProbe {
     let callbacks = Atomic<UInt64>(0)
     let amplitude1000 = Atomic<Double>(0)
     let amplitude440 = Atomic<Double>(0)
+    let lastPulseEdge = Atomic<Double>(0)
+    private var pulseEnergy = 0.0, pulseFrames = 0, pulseWasHigh = false
+    private var sampleRate = 48_000.0, secondsPerTick = 1e-9
     private var c1 = 0.0, c2 = 0.0
     private var s11 = 0.0, s12 = 0.0, s21 = 0.0, s22 = 0.0
     private var windowFrames = 9600, frameCount = 0
     var tap: AudioObjectID = 0
     var aggregate: AudioObjectID = 0
     var ioProc: AudioDeviceIOProcID?
-    func start() throws {
+    func start(deviceUID:String? = nil,stream:Int = 0,analysisSeconds:Double = 0.2) throws {
         let own = try HAL.objects(HAL.system,kAudioHardwarePropertyProcessObjectList).filter {
             (try? HAL.read($0,kAudioProcessPropertyPID,default:pid_t(0))) == getpid()
         }
         guard !own.isEmpty else { throw AudioFailure(operation:"Vanille output process not found",status:-1) }
-        let description = CATapDescription(stereoMixdownOfProcesses:own)
+        let description:CATapDescription
+        if let deviceUID { description = CATapDescription(processes:own,deviceUID:deviceUID,stream:UInt(stream)) }
+        else { description = CATapDescription(stereoMixdownOfProcesses:own) }
         description.name = "Vanille verification readback"; description.isPrivate = true; description.muteBehavior = .unmuted
         try HAL.check(AudioHardwareCreateProcessTap(description,&tap),"Create verification tap")
         let uid = try HAL.string(tap,kAudioTapPropertyUID)
         let format = try HAL.read(tap,kAudioTapPropertyFormat,default:AudioStreamBasicDescription())
-        windowFrames = Int((format.mSampleRate*0.2).rounded())
+        sampleRate = format.mSampleRate
+        var timebase = mach_timebase_info_data_t(); mach_timebase_info(&timebase)
+        secondsPerTick = Double(timebase.numer)/Double(timebase.denom)*1e-9
+        windowFrames = Int((format.mSampleRate*analysisSeconds).rounded())
         c1 = 2*cos(2*Double.pi*1000/format.mSampleRate); c2 = 2*cos(2*Double.pi*440/format.mSampleRate)
         let dict: [String:Any] = [kAudioAggregateDeviceNameKey:"Vanille Verification",
             kAudioAggregateDeviceUIDKey:"com.avanturation.Vanille.verification.\(UUID().uuidString)",
@@ -33,7 +41,7 @@ final class OutputProbe {
             kAudioAggregateDeviceTapListKey:[[kAudioSubTapUIDKey:uid,kAudioSubTapDriftCompensationKey:true]],
             kAudioAggregateDeviceTapAutoStartKey:false]
         try HAL.check(AudioHardwareCreateAggregateDevice(dict as CFDictionary,&aggregate),"Create verification input")
-        try HAL.check(AudioDeviceCreateIOProcID(aggregate, { _,_,input,_,_,_,client in
+        try HAL.check(AudioDeviceCreateIOProcID(aggregate, { _,_,input,time,_,_,client in
             guard let client else { return noErr }
             let probe = Unmanaged<OutputProbe>.fromOpaque(client).takeUnretainedValue()
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating:input))
@@ -47,12 +55,23 @@ final class OutputProbe {
             probe.rms.store(samples > 0 ? sqrt(sum/Double(samples)) : 0,ordering:.relaxed)
             if let buffer = buffers.first, let data = buffer.mData, buffer.mNumberChannels > 0 {
                 let floats = data.assumingMemoryBound(to:Float.self), channels = Int(buffer.mNumberChannels)
-                for frame in 0..<(Int(buffer.mDataByteSize)/(4*channels)) { probe.analyze(Double(floats[frame*channels])) }
+                for frame in 0..<(Int(buffer.mDataByteSize)/(4*channels)) {
+                    let sample = Double(floats[frame*channels]); probe.analyze(sample)
+                    probe.analyzePulse(sample,time:Double(time.pointee.mHostTime)*probe.secondsPerTick+Double(frame)/probe.sampleRate)
+                }
             }
             probe.callbacks.wrappingAdd(1,ordering:.relaxed)
             return noErr
         },Unmanaged.passUnretained(self).toOpaque(),&ioProc),"Create verification reader")
         try HAL.check(AudioDeviceStart(aggregate,ioProc),"Start verification reader")
+    }
+    @inline(__always) private func analyzePulse(_ sample:Double,time:Double) {
+        pulseEnergy += sample*sample; pulseFrames += 1
+        if pulseFrames >= Int(sampleRate*0.005) {
+            let high = sqrt(pulseEnergy/Double(pulseFrames))>0.0001
+            if high && !pulseWasHigh { lastPulseEdge.store(time,ordering:.relaxed) }
+            pulseWasHigh = high; pulseFrames = 0; pulseEnergy = 0
+        }
     }
     @inline(__always) private func analyze(_ sample:Double) {
         let x1 = sample+c1*s11-s12; s12 = s11; s11 = x1
@@ -139,6 +158,7 @@ final class LiveVerification: NSObject {
         for app in state.applications { test.applications[app.id] = AppVolume(bypass:app.id != fixtureID,name:app.name) }
         test.applications[fixtureID] = AppVolume(name:"Vanille Test Tone")
         test.processingPaused = false; test.eq = EQSettings()
+        test.selectedGroupID = nil; test.deviceSettings = [:]
         state.applyVerificationState(test)
         append("Waiting for the processing callback. macOS may request System Audio Recording permission.")
         waitForEngine(attempt:0)
@@ -272,5 +292,130 @@ final class LiveVerification: NSObject {
         append("Original settings restored. Test tone stopped.")
     }
     deinit { probe.stop() }
+}
+
+/// Signal readback from each real aggregate output stream. This does not measure sound in the room.
+final class RoutingVerification:NSObject {
+    let state:AppState
+    let original:SavedState
+    let fixtureID = "com.avanturation.Vanille.TestPulse"
+    let probes = [OutputProbe(),OutputProbe()]
+    let combinedProbe = OutputProbe()
+    let log = NSTextView()
+    var window:NSWindow!
+    var entries:[[String:Any]] = []
+    var baseline = [0.0,0.0], baselineDelay = 0.0
+    var finished = false
+    var initialDefault:AudioObjectID = 0, initialTapCount = 0, initialDeviceCount = 0
+    var outputs:[OutputDevice] = []
+    var timeout:DispatchWorkItem?
+    let root = URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    init(state:AppState) { self.state = state; original = state.saved; super.init() }
+    private func append(_ text:String) { log.textStorage?.append(NSAttributedString(string:text+"\n")); log.scrollToEndOfDocument(nil); NSLog("Vanille routing verification: %@",text) }
+    func run() {
+        window = NSWindow(contentRect:NSRect(x:0,y:0,width:650,height:360),styleMask:[.titled,.closable],backing:.buffered,defer:false)
+        window.title = "Vanille Multi-Output Verification"; window.isReleasedWhenClosed = false
+        let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.documentView = log
+        log.isEditable = false; log.font = .monospacedSystemFont(ofSize:11,weight:.regular); log.autoresizingMask = [.width]; log.frame = NSRect(x:0,y:0,width:630,height:350)
+        window.contentView = scroll; window.center(); window.makeKeyAndOrderFront(nil)
+        state.refresh()
+        guard let wired = state.routingOutputs.first(where: { $0.transport == kAudioDeviceTransportTypeUSB }),
+              let airplay = state.routingOutputs.first(where: { $0.isAirPlay }) else { append("Connect a wired output and one system AirPlay output first."); return }
+        outputs = [wired,airplay]
+        initialDefault = state.devices.defaultOutput()
+        initialTapCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
+        initialDeviceCount = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
+        append("Testing two real outputs: \(wired.name) + \(airplay.name).")
+        append("Quiet 100 ms pulses; no samples are recorded. Speaker acoustics are not measured.")
+        let config = NSWorkspace.OpenConfiguration(); config.activates = false
+        NSWorkspace.shared.openApplication(at:root.appendingPathComponent("build/VanilleTestPulse.app"),configuration:config) { _,error in
+            DispatchQueue.main.async {
+                if let error { self.append(error.localizedDescription); self.finish(); return }
+                DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.prepare() }
+            }
+        }
+        let t = DispatchWorkItem { [weak self] in guard let self, !self.finished else { return }; self.append("Routing verification timed out."); self.finish() }
+        timeout = t; DispatchQueue.main.asyncAfter(deadline:.now()+100,execute:t)
+    }
+    private func prepare() {
+        guard !finished else { return }; state.refresh()
+        guard state.applications.contains(where: { $0.id == fixtureID }) else { DispatchQueue.main.asyncAfter(deadline:.now()+1) { self.prepare() }; return }
+        var test = original
+        for app in state.applications { test.applications[app.id] = AppVolume(bypass:app.id != fixtureID,name:app.name) }
+        test.applications[fixtureID] = AppVolume(name:"Vanille Test Pulse")
+        test.eq = EQSettings(); test.processingPaused = false
+        let group = OutputGroup(id:"verification.two-output",name:"Verification",devices:outputs.map { DeviceRoute(id:$0.uid,name:$0.name) })
+        test.outputGroups.append(group); test.selectedGroupID = group.id
+        state.applyVerificationState(test); waitForEngine(0)
+    }
+    private func waitForEngine(_ attempt:Int) {
+        guard !finished else { return }
+        DispatchQueue.main.asyncAfter(deadline:.now()+1) {
+            guard !self.finished else { return }
+            if self.state.metrics.running && self.state.metrics.outputUIDs.count == 2 {
+                do {
+                    for i in 0..<2 { try self.probes[i].start(deviceUID:self.outputs[i].uid,stream:0,analysisSeconds:1) }
+                    try self.combinedProbe.start(analysisSeconds:1)
+                    self.append("Independent taps opened on physical output devices; combined process tap also active."); self.stage(0)
+                } catch { self.append("Stream readback failed: \(error.localizedDescription)"); self.finish() }
+            } else if attempt<30 { self.waitForEngine(attempt+1) }
+            else { self.append(self.state.metrics.error ?? "Two-output engine did not start."); self.finish() }
+        }
+    }
+    private func phaseDifference() -> Double {
+        let a = probes[0].lastPulseEdge.load(ordering:.relaxed), b = probes[1].lastPulseEdge.load(ordering:.relaxed)
+        var d = (b-a).truncatingRemainder(dividingBy:1)
+        if d>0.5 { d -= 1 }; if d < -0.5 { d += 1 }; return d
+    }
+    private func stage(_ index:Int) {
+        guard !finished else { return }
+        guard index<6 else { finish(); return }
+        var test = state.saved
+        let g = test.outputGroups.firstIndex { $0.id == "verification.two-output" }!
+        if index==1 { test.outputGroups[g].devices[0].volume = 0.3 }
+        if index==2 { test.outputGroups[g].devices[1].muted = true }
+        if index==3 { test.outputGroups[g].devices[1].muted = false; test.outputGroups[g].devices[0].volume = 1; test.outputGroups[g].devices[1].delayMS = 120 }
+        if index==4 { test.eq.enabled = true; test.eq.autoHeadroom = false; test.eq.gains[5] = 6 }
+        if index==5 { test.processingPaused = true }
+        state.applyVerificationState(test)
+        // Two pulse periods give both readers a fresh edge and steady Goertzel window.
+        DispatchQueue.main.asyncAfter(deadline:.now()+3.5) { self.measure(index:index,values:[],remaining:15) }
+    }
+    private func measure(index:Int,values:[[Double]],remaining:Int) {
+        guard !finished else { return }
+        let values = values + [probes.map { $0.amplitude1000.load(ordering:.relaxed) }]
+        if remaining>1 { DispatchQueue.main.asyncAfter(deadline:.now()+0.1) { self.measure(index:index,values:values,remaining:remaining-1) }; return }
+        // One full pulse period per spectral window keeps amplitude independent of pulse phase.
+        let measured = (0..<2).map { i in values.map { $0[i] }.max() ?? 0 }
+        if index==0 { baseline = measured; baselineDelay = phaseDifference() }
+        let ratios = (0..<2).map { baseline[$0]>1e-7 ? measured[$0]/baseline[$0] : -1 }
+        let boost = pow(10,6/20.0)
+        let expected = [[1.0,1.0],[0.3,1],[0.3,0],[1,1],[boost,boost],[0,0]][index]
+        let delay = phaseDifference()-baselineDelay
+        let delayOK = index != 3 || abs(delay-0.120)<0.018
+        let pass = zip(ratios,expected).allSatisfy { abs($0-$1)<0.13 } && baseline.allSatisfy { $0>1e-5 } && delayOK
+        let name = ["Two hardware streams carry the same signal","Independent wired output volume","Independent AirPlay output mute","120 ms output delay","Global EQ on both output streams","Pause restores original path"][index]
+        entries.append(["test":name,"passed":pass,"ratios":ratios,"expected":expected,"relativeDelayMS":delay*1000,"engineCallbacks":state.metrics.callbacks,"outputCount":state.metrics.outputUIDs.count,
+            "readbackAmplitudes":measured,"probeCallbacks":probes.map { $0.callbacks.load(ordering:.relaxed) },"combinedAmplitude":combinedProbe.amplitude1000.load(ordering:.relaxed),"engineInputRMS":state.metrics.inputRMS,"engineOutputRMS":state.metrics.outputRMS])
+        append(String(format:"%@ %@ · wired %.3f / AirPlay %.3f · delay %.1f ms",pass ? "PASS" : "FAIL",name,ratios[0],ratios[1],delay*1000))
+        stage(index+1)
+    }
+    private func finish() {
+        guard !finished else { return }; finished = true; timeout?.cancel()
+        var paused = state.saved; paused.processingPaused = true; state.applyVerificationState(paused)
+        for p in probes { p.stop() }; combinedProbe.stop(); state.audio.stopSynchronously()
+        for app in NSRunningApplication.runningApplications(withBundleIdentifier:fixtureID) { app.terminate() }
+        DispatchQueue.main.asyncAfter(deadline:.now()+1) {
+            let taps = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
+            let devices = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
+            self.entries.append(["test":"Default system output unchanged","passed":self.state.devices.defaultOutput() == self.initialDefault])
+            self.entries.append(["test":"No leaked tap or aggregate","passed":taps == self.initialTapCount && devices == self.initialDeviceCount])
+            let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,"outputs":self.outputs.map(\.name),"measurements":self.entries,
+                "allPassed":self.entries.count == 8 && self.entries.allSatisfy { $0["passed"] as? Bool == true },
+                "scope":"Two actual HAL output streams only. No microphone or acoustic synchronization measurement; two independent HomePod pairs remain unavailable."]
+            if let data = try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:self.root.appendingPathComponent("build/live-routing-results.json"),options:.atomic) }
+            self.state.applyVerificationState(self.original); self.append("Test finished; original settings restored.")
+        }
+    }
 }
 #endif

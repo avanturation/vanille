@@ -80,23 +80,24 @@ final class MenuBarViewController: NSViewController {
     let state: AppState
     var showEQ: (() -> Void)?
     var showSettings: (() -> Void)?
+    var showGroups: (() -> Void)?
     var onSizeChange: ((NSSize) -> Void)?
     private var token: UUID?
     private var outputPicker: ActionPopUp!
-    private var master: ActionSlider!
-    private let masterValue = UI.text("", size: 11, color: .secondaryLabelColor)
-    private let masterNote = UI.text("", size: 11, color: .secondaryLabelColor)
+    private var groupPicker: ActionPopUp!
+    private let routeList = UI.documentStack(spacing:8)
+    private var routeScroll: NSScrollView!
+    private var routeHeight:NSLayoutConstraint!
+    private var routeSignature = ""
     private var eqToggle: ActionButton!
     private var preset: ActionPopUp!
     private var pause: ActionButton!
     private let status = UI.text("", size: 11, color: .secondaryLabelColor)
-    private let applicationList = UI.vertical(spacing: 7)
+    private let applicationList = UI.documentStack(spacing: 7)
     private var appScroll: NSScrollView!
     private var scrollHeight: NSLayoutConstraint!
     private var root: NSStackView!
-    private let profileRow = UI.horizontal([], spacing: 6)
     private var appSignature = ""
-    private var profileSignature = ""
 
     init(state: AppState) { self.state = state; super.init(nibName: nil,bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -104,17 +105,19 @@ final class MenuBarViewController: NSViewController {
         let effect = NSVisualEffectView(); effect.material = .popover; effect.blendingMode = .behindWindow; effect.state = .active
         effect.frame = NSRect(x:0,y:0,width:348,height:420); view = effect
         root = UI.vertical(spacing: 10); UI.pin(root,to: effect,inset: 14)
+        groupPicker = ActionPopUp(label:"Output group") { [weak self] id in self?.state.selectGroup(id == "current" ? nil : id) }
+        let editGroups = ActionButton("Edit…") { [weak self] in self?.showGroups?() }
+        add(UI.horizontal([UI.text("Group",weight:.medium),groupPicker,editGroups]))
         outputPicker = ActionPopUp(label: "Output device") { [weak self] in self?.state.selectOutput($0) }
-        let outputRow = UI.horizontal([UI.text("Output",weight: .medium), NSView(), outputPicker])
+        let outputRow = UI.horizontal([UI.text("System Output",size:11,color:.secondaryLabelColor), NSView(), outputPicker])
         outputPicker.widthAnchor.constraint(lessThanOrEqualToConstant: 246).isActive = true
         add(outputRow)
-        let speaker = NSImageView(image: UI.symbol("speaker.wave.2",label: "Output volume")!)
-        speaker.widthAnchor.constraint(equalToConstant: 18).isActive = true
-        master = ActionSlider(value: 1,min: 0,max: 1,label: "Output volume") { [weak self] in self?.state.setMasterVolume(Float($0)) }
-        masterValue.widthAnchor.constraint(equalToConstant: 36).isActive = true
-        masterValue.alignment = .right; masterValue.font = .monospacedDigitSystemFont(ofSize: 11,weight: .regular)
-        add(UI.horizontal([speaker,master,masterValue]))
-        add(masterNote)
+        routeScroll = NSScrollView(); routeScroll.drawsBackground = false; routeScroll.hasVerticalScroller = true; routeScroll.autohidesScrollers = true
+        routeList.translatesAutoresizingMaskIntoConstraints = false; routeScroll.documentView = routeList
+        routeList.leadingAnchor.constraint(equalTo:routeScroll.contentView.leadingAnchor).isActive = true
+        routeList.trailingAnchor.constraint(equalTo:routeScroll.contentView.trailingAnchor).isActive = true
+        routeList.topAnchor.constraint(equalTo:routeScroll.contentView.topAnchor).isActive = true
+        routeHeight = routeScroll.heightAnchor.constraint(equalToConstant:48); routeHeight.isActive = true; add(routeScroll)
         add(UI.separator())
         add(UI.text("Applications",size: 11,weight: .semibold,color: .secondaryLabelColor))
         appScroll = NSScrollView(); appScroll.drawsBackground = false; appScroll.hasVerticalScroller = true
@@ -134,9 +137,8 @@ final class MenuBarViewController: NSViewController {
         preset = ActionPopUp(label: "Equalizer preset") { [weak self] in self?.state.selectPreset($0) }
         add(preset)
         add(UI.separator())
-        add(profileRow)
-        add(UI.separator())
         status.maximumNumberOfLines = 3; status.lineBreakMode = .byWordWrapping
+        status.preferredMaxLayoutWidth = 320
         status.setContentCompressionResistancePriority(.defaultLow,for: .horizontal)
         add(status)
         let settings = ActionButton("Settings…") { [weak self] in self?.showSettings?() }
@@ -152,14 +154,20 @@ final class MenuBarViewController: NSViewController {
         outputPicker.setItems(state.outputs.map { ($0.name,$0.uid) }, selected: state.output?.uid)
         outputPicker.isEnabled = !state.outputs.isEmpty
         if state.outputs.isEmpty { outputPicker.setItems([("No Output", "none")],selected: "none") }
-        master.isEnabled = state.masterVolume != nil
-        if let value = state.masterVolume {
-            if !master.isHighlighted { master.doubleValue = Double(value) }
-            masterValue.stringValue = "\(Int((value*100).rounded()))%"
-            masterNote.isHidden = true
-        } else {
-            masterValue.stringValue = "—"; masterNote.isHidden = false
-            masterNote.stringValue = "Volume is controlled by this output device."
+        groupPicker.setItems([("Current Output","current")]+state.saved.outputGroups.map { ($0.name,$0.id) },selected:state.saved.selectedGroupID ?? "current")
+        let routes = state.deviceRoutes
+        let rSignature = (state.saved.selectedGroupID ?? "current") + routes.map { route in
+            route.id + route.name + String(state.outputs.contains { $0.uid == route.id })
+        }.joined()
+        if rSignature != routeSignature || routeList.arrangedSubviews.isEmpty {
+            routeSignature = rSignature
+            for v in routeList.arrangedSubviews { routeList.removeArrangedSubview(v); v.removeFromSuperview() }
+            if routes.isEmpty { routeList.addArrangedSubview(UI.text("No outputs assigned. Choose Edit to add outputs.",size:11,color:.secondaryLabelColor)) }
+            for route in routes {
+                let row = DeviceRouteRow(route:route,state:state); routeList.addArrangedSubview(row)
+                row.widthAnchor.constraint(equalTo:routeList.widthAnchor).isActive = true
+            }
+            routeHeight.constant = CGFloat(max(1,min(3,routes.count)))*56
         }
         eqToggle.state = state.saved.eq.enabled ? .on : .off
         var presets = state.allPresets.map { ($0.name,$0.id) }
@@ -184,18 +192,6 @@ final class MenuBarViewController: NSViewController {
                 }
             }
             scrollHeight.constant = CGFloat(min(4,state.applications.count))*55 + (state.applications.isEmpty ? 32 : -7)
-        }
-        let profiles = state.saved.profiles
-        let pSignature = profiles.map { $0.id+$0.name }.joined()
-        if pSignature != profileSignature || profileRow.arrangedSubviews.isEmpty {
-            profileSignature = pSignature
-            for v in profileRow.arrangedSubviews { profileRow.removeArrangedSubview(v); v.removeFromSuperview() }
-            if profiles.isEmpty { profileRow.addArrangedSubview(UI.text("No profiles",size: 11,color: .secondaryLabelColor)) }
-            for profile in profiles.prefix(3) {
-                let button = ActionButton(profile.name) { [weak self] in self?.state.applyProfile(profile.id) }
-                button.setContentCompressionResistancePriority(.defaultLow,for: .horizontal)
-                profileRow.addArrangedSubview(button)
-            }
         }
         view.layoutSubtreeIfNeeded()
         let height = root.fittingSize.height + 28

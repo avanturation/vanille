@@ -50,6 +50,13 @@ enum HAL {
         try check(AudioObjectGetPropertyData(object, &property, 0, nil, &size, &result), "Read audio name")
         return (result?.takeRetainedValue() as String?) ?? ""
     }
+    static func strings(_ object:AudioObjectID,_ selector:AudioObjectPropertySelector) throws -> [String] {
+        var result:Unmanaged<CFArray>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFArray>?>.size)
+        var property = address(selector)
+        try check(AudioObjectGetPropertyData(object,&property,0,nil,&size,&result),"Read audio stream order")
+        return result?.takeRetainedValue() as? [String] ?? []
+    }
     static func objects(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
                         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal) throws -> [AudioObjectID] {
         var property = address(selector, scope: scope)
