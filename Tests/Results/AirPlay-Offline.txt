@@ -1,0 +1,8 @@
+PASS Empty history is silent
+PASS Fractional stereo playback preserves channel polarity
+PASS Invalid and huge positions cannot overflow sample indexes
+PASS Future and negative playback positions are silent
+PASS Wrapped history retains recent frames and rejects overwritten audio
+PASS Encoder gets only complete retained frames
+PASS Playback clock snapshots do not tear during 20,000 concurrent updates
+7/7 AirPlay bridge checks passed

@@ -30,3 +30,7 @@ jobs:
         run: ./Scripts/test.sh
       - name: Standalone app bundle
         run: ./Scripts/build.sh
+      - name: Experimental bridge checks
+        run: ./Scripts/test-airplay-bridge.sh
+      - name: Experimental native AirPlay bridge
+        run: ./Scripts/build-airplay-bridge-lab.sh
