@@ -28,10 +28,10 @@
 | 항목 | 결과 |
 | --- | --- |
 | 로컬 최적화 arm64 `.app` 빌드·실행 | 성공 |
-| ad-hoc 서명, 임시 staging bundle 검증 | 성공 |
+| ad-hoc 서명, 배포 zip에서 새로 푼 앱 검증 | 성공 |
 | 외부 패키지 / 웹 UI 런타임 | 없음 |
 | DSP·버퍼·설정 자동 검사 | **63개 통과** |
-| Xcode ARM64 CI, macOS 15 / 26 | `48f5385` 두 환경 통과; 최종 커밋도 CI 확인 후 이력에 기록 |
+| Xcode ARM64 CI, macOS 15 / 26 | `779b513` 자동 보정 버전, 두 환경 모두 통과 |
 
 63개 검사는 44.1/48/96kHz의 10개 밴드, 실제 PCM Gain/Mute, EQ와 Gain 동시 처리, headroom, limiter, 10ms ramp, planar/interleaved HAL 버퍼, 잘린 입력의 안전 중지, 짧은 소리의 신호 래치, 실제 출력별 impulse 지연, stereo polarity, 출력 mute 격리, 30ms 지연 변경 crossfade, 설정 migration/손상 복구, SPSC 동시 갱신을 포함합니다. 진단 음원의 pulse/종료·재시작 안전성, 게인 제한, OS 지연 계산, 알 수 없는 지연 거부, AirPlay 세션 UID 변경과 모호한 endpoint 거부도 검사했습니다.
 
@@ -54,7 +54,9 @@
 
 04:03 KST에 타이밍 도구까지 포함해 **11개 검사를 재실행하여 모두 통과**했습니다. 캡처 중인 앱이 하나도 없는 상태에서도 내장 타이밍 소리가 두 실제 장치에 전달되고, 추가 400ms가 약 **399.9ms**로 읽혔으며, Stop 후 출력이 0이 되는 것을 확인했습니다. 검사 후 원래 시스템 출력과 설정을 복원했고 리소스 누수는 없었습니다.
 
-### 실제 앱별 볼륨·EQ 회귀 검사 (04:04 KST)
+04:29 KST에 자동 보정 경로를 추가하여 **12개 모두 통과**했습니다. 사용자 지연 설정 override를 해제하자 엔진이 `[202.916667ms, 0ms]`를 스스로 계산해 적용했습니다. 독립적인 실제 장치 읽기에서 상대 펄스가 약 **−200.15ms** 이동했습니다. 펄스 검출 창은 5ms 단위로, 정확한 샘플 오프셋 검사는 별도의 PCM impulse 검사에서 수행합니다. 제품 UI의 지연 숫자·입력·스텝퍼·보정 버튼·테스트음 버튼도 제거했습니다.
+
+### 실제 앱별 볼륨·EQ 회귀 검사 (04:31 KST 재실행)
 
 **17개 모두 통과**했습니다. 네이티브 1kHz/440Hz 재생 앱 두 개를 동시에 실행하고 Vanille가 실제 출력한 신호를 별도의 탭으로 측정했습니다.
 
@@ -63,6 +65,8 @@
 - 검사 후 기본 출력 유지, 탭 개수·장치 개수의 정확한 원상 복귀.
 
 초기 회귀 시도에서는 사용자의 실행 중 엔진까지 baseline에 포함하여 정리 비교가 잘못 실패했습니다. 엔진을 먼저 중지하고 HAL의 비동기 제거를 기다린 뒤 baseline을 측정하도록 하네스를 고쳤습니다. 위 17개 결과는 수정 후의 재실행 결과입니다. 신호 검사의 실패를 숨기기 위해 허용 오차를 늘린 것이 아닙니다.
+
+배포용 일반 빌드에서도 지연 관련 입력·스텝퍼·보정 버튼이 없음을 접근성 트리와 화면으로 확인했습니다. 최종 zip에서 새로 푼 앱의 arm64, macOS 15 최소 버전, 서명, 진단 메뉴와 수동 지연 UI 부재를 검증했습니다. [배포 검사 수치](Tests/Results/ReleaseValidation.json).
 
 원본 수치: [LiveRouting.json](Tests/Results/LiveRouting.json), [LiveAudio.json](Tests/Results/LiveAudio.json), [Offline.txt](Tests/Results/Offline.txt). 오디오 샘플, 하드웨어 UID, 네트워크 이름은 포함하지 않습니다.
 
@@ -86,7 +90,7 @@ Safari에서 공개 YouTube Big Buck Bunny 영상을 실제 재생했고 활성 
 ## NOT IMPLEMENTED
 
 - 두 독립 HomePod 페어의 시스템 전체 동시 연결과 Full Room 수락 시나리오.
-- 마이크/루프백 기반 자동 음향 지연 측정, 자동 동기화, 재연결 후 지연 재추정.
+- 마이크/루프백 기반 음향 지연 측정과 청취 위치의 자동 음향 보정. OS 보고 지연의 자동 계산·갱신은 구현했습니다.
 - 자체 AirPlay 2/RAOP 프로토콜, 비공개 MediaRemote/AVOutputContext, 외부/커널 드라이버.
 - 자동 DRM 판정, 보호 콘텐츠 복호화, 영상 프레임 캡처.
 - 장치별 EQ와 앱별 서로 다른 목적지 라우팅.
@@ -95,7 +99,7 @@ Safari에서 공개 YouTube Big Buck Bunny 영상을 실제 재생했고 활성 
 ## KNOWN ISSUES
 
 1. **보정 후 실내 동기화는 미검증입니다.** 기준 음원의 MR4 선행과 OS의 205ms stream 지연을 근거로 MR4에 203ms를 적용했습니다. 소프트웨어의 120/400ms 검사는 스피커의 절대 음향 오프셋을 측정하지 않습니다.
-2. Core Audio에 AirPlay 출력 하나만 나타나며 일반 이름/연결별 UID이므로 두 페어의 신원·재연결 복원에 제약이 있습니다.
+2. Core Audio에 AirPlay 출력 하나만 나타나 두 페어의 신원을 구분하지 못합니다. 현재 시스템 AirPlay 연결을 따르는 역할은 세션 UID가 바뀌어도 복원하지만 특정 페어의 신원 보존을 보장하지 않습니다.
 3. 처음부터 캡처 불가한 오디오는 원본을 유지하지만, 이미 처리 중인 브라우저가 DRM으로 전환되는 상황은 자동 감지하지 않습니다. 해당 브라우저를 수동 우회해야 합니다.
 4. 활성 프로세스/기본 장치 변화 시 엔진을 다시 만들면서 짧은 원본↔처리 전환이 발생할 수 있습니다. 끊김 없는 전환을 장시간 검증하지 않았습니다.
 5. iCloud Documents의 File Provider가 앱에 FinderInfo 메타데이터를 붙일 수 있습니다. 서명은 별도 임시 폴더에서 검사하고 그 원본으로 zip을 만듭니다. 재배포·서명 검사는 zip에서 새로 푼 사본을 기준으로 합니다.
@@ -121,3 +125,5 @@ Safari에서 공개 YouTube Big Buck Bunny 영상을 실제 재생했고 활성 
 - `0ea444b`: macOS 15/26 Xcode CI 성공, 서명 보존 패키징.
 - `91b528c`: 실제 신호 확인 후 원본 mute, 두 앱 동시 검사. [두 OS CI 성공](https://github.com/avanturation/vanille/actions/runs/39056639223).
 - `48f5385`: 다중 출력, 독립 Gain/Delay, 그룹 편집과 타이밍 도구, 제한 문서화. [macOS 15/26 Xcode·offline·app 빌드 모두 성공](https://github.com/avanturation/vanille/actions/runs/39060207177).
+- `760cc72`: 장치와 stream 지연을 함께 읽어 실제 보정. [macOS 15/26 CI 성공](https://github.com/avanturation/vanille/actions/runs/39061859409).
+- `779b513`: 지연 보정 자동 갱신, 사용자 지연 UI 제거, AirPlay 역할 재연결, Safari Helper 표시 개선. [macOS 15/26 CI 성공](https://github.com/avanturation/vanille/actions/runs/39062704328).

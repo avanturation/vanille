@@ -28,6 +28,7 @@ final class StateStore {
         var durable = state
         if durable.timingSound { durable.processingPaused = true }
         durable.timingSound = false
+        durable.sanitize()
         let snapshot = durable
         let item = DispatchWorkItem {
             do {

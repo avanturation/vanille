@@ -98,6 +98,7 @@ struct SavedState: Codable {
 
     mutating func sanitize() {
         eq.sanitize()
+        applications = applications.filter { !$0.key.hasPrefix("com.avanturation.Vanille.Test") && $0.key != "com.avanturation.Vanille.RoutingLab" }
         for key in Array(applications.keys) {
             let value = applications[key]!.volume
             applications[key]!.volume = value.isFinite ? min(1, max(0, value)) : 1

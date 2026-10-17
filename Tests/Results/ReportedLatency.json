@@ -29,8 +29,13 @@
       ]
     }
   ],
-  "appliedDelayMS": {
+  "initialAppliedDelayMS": {
     "wired": 203,
     "AirPlay": 0
-  }
+  },
+  "automaticAppliedDelayMS": {
+    "wired": 202.91666666666666,
+    "AirPlay": 0
+  },
+  "automaticVerificationDate": "2026-10-17T19:29:24Z"
 }

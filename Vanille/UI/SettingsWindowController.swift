@@ -81,20 +81,25 @@ final class SettingsWindowController: NSWindowController {
     }
     private func tab(_ name:String,body:NSStackView,in tabs:NSTabView) {
         let view = NSView(); UI.pin(body,to:view,inset:18)
-        for child in body.arrangedSubviews { child.widthAnchor.constraint(equalTo:body.widthAnchor).isActive = true }
+        for child in body.arrangedSubviews where !(child is NSButton) { child.widthAnchor.constraint(equalTo:body.widthAnchor).isActive = true }
         let item = NSTabViewItem(identifier:name); item.label = name; item.view = view; tabs.addTabViewItem(item)
     }
     private func update() {
         login.state = state.launchAtLogin ? .on : .off
         pause.state = state.saved.processingPaused ? .on : .off
         message.stringValue = state.notice ?? state.statusText
-        let entries = state.saved.applications.sorted { ($0.value.name.isEmpty ? $0.key : $0.value.name).localizedStandardCompare($1.value.name.isEmpty ? $1.key : $1.value.name) == .orderedAscending }
+        let entries = state.saved.applications.filter { id,_ in
+            if id.hasPrefix("com.avanturation.Vanille.") && id != "com.avanturation.Vanille.OtherSystemAudio" { return false }
+            if let range = id.range(of:".helper",options:.caseInsensitive), state.saved.applications[String(id[..<range.lowerBound])] != nil { return false }
+            return true
+        }.sorted { ($0.value.name.isEmpty ? $0.key : $0.value.name).localizedStandardCompare($1.value.name.isEmpty ? $1.key : $1.value.name) == .orderedAscending }
         let signature = entries.map { "\($0.key):\($0.value.name):\($0.value.bypass)" }.joined(separator:";")
         if signature != bypassSignature {
             bypassSignature = signature
             for v in bypassList.arrangedSubviews { bypassList.removeArrangedSubview(v); v.removeFromSuperview() }
             for (id,value) in entries {
-                let button = ActionButton(value.name.isEmpty ? id : value.name) { [weak self] in guard let self else { return }; self.state.setBypass(!self.state.volume(for:id).bypass,id:id) }
+                let displayName = id == "systemsoundserverd" ? "System Sounds" : (value.name.isEmpty ? id : value.name)
+                let button = ActionButton(displayName) { [weak self] in guard let self else { return }; self.state.setBypass(!self.state.volume(for:id).bypass,id:id) }
                 button.setButtonType(.switch); button.state = value.bypass ? .on : .off
                 button.setAccessibilityLabel("Bypass \(button.title)")
                 bypassList.addArrangedSubview(button)

@@ -51,12 +51,14 @@ PASS: Muting one output leaves another output playing
 PASS: Delay changes crossfade over 30 ms without a discontinuous jump
 PASS: Reported HomePod stream latency produces an actual wired-delay target
 PASS: Unknown or excessive device latency never becomes a fabricated timing match
+PASS: System AirPlay route follows reconnecting public endpoint without retaining stale UID
+PASS: Ambiguous AirPlay endpoints are never silently treated as the same speaker
 PASS: Timing sound emits a bounded 100 ms pulse every four seconds
 PASS: Stopping the timing sound fades its generator to silence
 PASS: Persistent settings round-trip by Bundle ID and Device UID
 PASS: Output groups retain independent volume, mute and millisecond offsets
 PASS: Existing settings migrate safely to editable output groups
-PASS: Timing tests never restart automatically after a crash or relaunch
+PASS: Diagnostic timing overrides never restart after a crash or relaunch
 PASS: Corrupt settings recover to safe defaults
 PASS: Triple-buffer parameter snapshots remain coherent under concurrent updates
-61 checks passed
+63 checks passed

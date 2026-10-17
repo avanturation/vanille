@@ -1,0 +1,8 @@
+{
+  "signatureVerifiedFromArchive": true,
+  "architecture": "arm64",
+  "minimumMacOS15": true,
+  "diagnosticMenusAbsent": true,
+  "manualDelayUIAbsent": true,
+  "allPassed": true
+}

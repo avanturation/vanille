@@ -116,6 +116,7 @@ final class AppState {
             for app in applications where saved.applications[app.id] == nil {
                 if app.id == "com.apple.Safari", var legacy = saved.applications["com.apple.WebKit.GPU"] {
                     legacy.name = app.name; saved.applications[app.id] = legacy
+                    saved.applications.removeValue(forKey:"com.apple.WebKit.GPU")
                 } else { saved.applications[app.id] = AppVolume(name: app.name) }
             }
             if output == nil, let fallback = outputs.first(where: { !$0.isAirPlay }) ?? outputs.first {

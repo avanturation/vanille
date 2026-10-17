@@ -1,10 +1,10 @@
 {
   "allPassed": true,
-  "date": "2026-10-17T19:03:02Z",
+  "date": "2026-10-17T19:29:24Z",
   "measurements": [
     {
-      "combinedAmplitude": 0.0009499991314458484,
-      "engineCallbacks": 618,
+      "combinedAmplitude": 0.0009499992951575178,
+      "engineCallbacks": 524,
       "engineInputRMS": 0,
       "engineOutputRMS": 0,
       "expected": [
@@ -14,23 +14,23 @@
       "outputCount": 2,
       "passed": true,
       "probeCallbacks": [
-        498,
-        482
+        491,
+        474
       ],
       "ratios": [
         1,
         1
       ],
       "readbackAmplitudes": [
-        0.0004749955302949156,
-        0.0004749996773165272
+        0.0004749953081804718,
+        0.0004749996689426365
       ],
       "relativeDelayMS": 0,
       "test": "Two hardware streams carry the same signal"
     },
     {
-      "combinedAmplitude": 0.00061749939346772,
-      "engineCallbacks": 1087,
+      "combinedAmplitude": 0.000617499530876992,
+      "engineCallbacks": 993,
       "engineInputRMS": 0,
       "engineOutputRMS": 0,
       "expected": [
@@ -40,23 +40,23 @@
       "outputCount": 2,
       "passed": true,
       "probeCallbacks": [
-        966,
-        950
+        965,
+        948
       ],
       "ratios": [
-        0.3000001184636599,
-        0.9999999256085063
+        0.3000000258629286,
+        1.0000002102925498
       ],
       "readbackAmplitudes": [
-        0.00014249871535818365,
-        0.00047499964198059166
+        0.00014249860473891128,
+        0.00047499976883152805
       ],
-      "relativeDelayMS": -0.03825034946203232,
+      "relativeDelayMS": -0.041457824409008026,
       "test": "Independent wired output volume"
     },
     {
-      "combinedAmplitude": 0.00014249990820353322,
-      "engineCallbacks": 1556,
+      "combinedAmplitude": 0.00014249989791968872,
+      "engineCallbacks": 1462,
       "engineInputRMS": 0,
       "engineOutputRMS": 0,
       "expected": [
@@ -67,22 +67,22 @@
       "passed": true,
       "probeCallbacks": [
         1436,
-        1420
+        1419
       ],
       "ratios": [
-        0.3000003070491866,
+        0.3000001964941477,
         0
       ],
       "readbackAmplitudes": [
-        0.0001424988049354659,
+        0.0001424986857879398,
         0
       ],
-      "relativeDelayMS": -0.07508369162678719,
+      "relativeDelayMS": -0.08195778355002403,
       "test": "Independent AirPlay output mute"
     },
     {
-      "combinedAmplitude": 0.0009499958232783895,
-      "engineCallbacks": 2024,
+      "combinedAmplitude": 0.0009499952254384665,
+      "engineCallbacks": 1930,
       "engineInputRMS": 0,
       "engineOutputRMS": 0,
       "expected": [
@@ -92,23 +92,23 @@
       "outputCount": 2,
       "passed": true,
       "probeCallbacks": [
-        1904,
-        1888
+        1907,
+        1890
       ],
       "ratios": [
-        1.0000013067998184,
-        1.0000000205168174
+        1.0000007732325797,
+        1.0000002395821275
       ],
       "readbackAmplitudes": [
-        0.00047499615101898827,
-        0.0004749996870620088
+        0.0004749956754623193,
+        0.00047499978274406773
       ],
-      "relativeDelayMS": 119.891541544348,
+      "relativeDelayMS": 119.87783340737224,
       "test": "120 ms output delay"
     },
     {
-      "combinedAmplitude": 0.0018954904457285095,
-      "engineCallbacks": 2493,
+      "combinedAmplitude": 0.001895489548292534,
+      "engineCallbacks": 2399,
       "engineInputRMS": 0,
       "engineOutputRMS": 0,
       "expected": [
@@ -118,18 +118,18 @@
       "outputCount": 2,
       "passed": true,
       "probeCallbacks": [
-        2373,
-        2357
+        2376,
+        2359
       ],
       "ratios": [
-        1.9952654823791585,
-        1.9952619739812565
+        1.9952645764900918,
+        1.9952627070367959
       ],
       "readbackAmplitudes": [
-        0.0009477421858818289,
-        0.0009477487938030338
+        0.0009477413124114897,
+        0.0009477491252960668
       ],
-      "relativeDelayMS": 119.8567496612668,
+      "relativeDelayMS": 119.83862519264221,
       "test": "Global EQ on both output streams"
     },
     {
@@ -144,8 +144,8 @@
       "outputCount": 0,
       "passed": true,
       "probeCallbacks": [
-        2848,
-        2832
+        2860,
+        2843
       ],
       "ratios": [
         0,
@@ -155,13 +155,17 @@
         0,
         0
       ],
-      "relativeDelayMS": 119.8567496612668,
+      "relativeDelayMS": 119.83862519264221,
       "test": "Pause restores original path"
     },
     {
       "amplitudes": [
-        0.0007124999890997046,
-        0.0007125043718568712
+        0.0007124999890997035,
+        0.0007125044574406566
+      ],
+      "appliedOutputDelaysMS": [
+        0,
+        0
       ],
       "capturedApplications": 0,
       "passed": true,
@@ -170,22 +174,43 @@
     },
     {
       "amplitudes": [
-        0.0007124999890997046,
-        0.0007125042753561464
+        0.0007124999890997035,
+        0.0007125044038608087
+      ],
+      "appliedOutputDelaysMS": [
+        0,
+        400
       ],
       "capturedApplications": 0,
       "passed": true,
-      "relativeDelayMS": 399.9437913298607,
+      "relativeDelayMS": 399.9415831640363,
       "test": "Timing sound applies 400 ms per-device offset"
+    },
+    {
+      "amplitudes": [
+        0.0007124999890997013,
+        0.0007125043281234073
+      ],
+      "appliedOutputDelaysMS": [
+        202.91666666666666,
+        0
+      ],
+      "capturedApplications": 0,
+      "passed": true,
+      "relativeDelayMS": -200.14579175040126,
+      "test": "Automatic device timing changes actual output without user delay settings"
     },
     {
       "amplitudes": [
         0,
         0
       ],
+      "appliedOutputDelaysMS": [
+
+      ],
       "capturedApplications": 0,
       "passed": true,
-      "relativeDelayMS": 399.9437913298607,
+      "relativeDelayMS": -200.14579175040126,
       "test": "Timing sound stops safely"
     },
     {
