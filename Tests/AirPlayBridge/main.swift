@@ -204,7 +204,9 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         virtualRequest?.cancel();virtualRequest=nil
         virtualAttempt=UUID();virtualPreparing=false
         if let measurement { measurement.onFinish=nil;measurement.stop();lastMeasurement=measurement.summary };measurement=nil
-        controlledVideo.stop();stopLive();player.pause();player.replaceCurrentItem(with:nil);refresh()
+        controlledVideo.stop();stopLive();player.pause();player.replaceCurrentItem(with:nil)
+        scope.stringValue="Processing stopped. Choose your speakers, then start playback."
+        refresh()
     }
     @objc func modeChanged() {
         stop();videoHolder.isHidden=mode.selectedSegment==0
@@ -426,6 +428,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         }
         let http=server?.metrics
         let liveSnapshot=live?.snapshot ?? lastLive
+        if !liveError.isEmpty { scope.stringValue="Processing stopped. \(liveError)" }
         replaceButton.isEnabled=live != nil
         replaceButton.state=liveSnapshot["mr4Enabled"] as? Bool == true ? .on : .off
         let report:[String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"defaultOutput":current?.name ?? "Unknown","defaultTransport":current.map { $0.isAirPlay ? "AirPlay" : "Local" } ?? "Unknown","halAirPlayCount":outputs.filter(\.isAirPlay).count,"halOutputNames":outputs.map(\.name),"routesDetected":detector.multipleRoutesDetected,"playerStatus":player.status.rawValue,"itemStatus":item?.status.rawValue ?? -1,"timeControlStatus":player.timeControlStatus.rawValue,"playerTime":time.isFinite ? time : -1,"waitingReason":player.reasonForWaitingToPlay?.rawValue ?? "","error":(player.error ?? item?.error)?.localizedDescription ?? liveError,"loopbackOnly":true,"audioSaved":false,"requests":http?.requests ?? 0,"bytesSent":http?.bytes ?? 0,"selectedRemoteIdentitiesAvailableInPublicAPI":false,"live":liveSnapshot,"scope":"Experimental memory-only system-audio bridge. Three acoustic outputs require listener verification."]
