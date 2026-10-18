@@ -45,6 +45,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     let mode=NSSegmentedControl(labels:["Music Mode","Video Mode"],trackingMode:.selectOne,target:nil,action:nil)
     let cases=NSPopUpButton()
     let runButton=NSButton(title:"Run 90-second Comparison",target:nil,action:nil)
+    let liveSystemButton=NSButton(title:"Live System Audio",target:nil,action:nil)
     let scope=NSTextField(wrappingLabelWithString:"")
     var measurement:SyncMeasurement?
     var lastMeasurement:[String:Any]=[:]
@@ -74,7 +75,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let intro = NSTextField(wrappingLabelWithString:"Music Mode routes sound to the selected speakers. Video Mode preserves external players’ original audio. The comparison measures only the supplied test clip.")
         intro.font = .systemFont(ofSize:12)
         let picker = AVRoutePickerView(); picker.player = player; picker.setAccessibilityLabel("AirPlay destinations for experimental player")
-        let row = NSStackView(views:[picker,button("Play Quiet Pulse",#selector(play)),button("Live Pulse",#selector(livePulse)),button("Live System Audio",#selector(liveSystem)),button("Use MR4 for Video",#selector(stop))]); row.spacing = 8
+        liveSystemButton.target=self;liveSystemButton.action=#selector(liveSystem);liveSystemButton.bezelStyle = .rounded
+        let row = NSStackView(views:[picker,button("Play Quiet Pulse",#selector(play)),button("Live Pulse",#selector(livePulse)),liveSystemButton,button("Use MR4 for Video",#selector(stop))]); row.spacing = 8
         replaceButton.target=self;replaceButton.action=#selector(replaceOriginal)
         localVolume.target=self;localVolume.action=#selector(volumeChanged);localVolume.setAccessibilityLabel("MR4 experimental volume")
         let localRow=NSStackView(views:[replaceButton,NSTextField(labelWithString:"MR4"),localVolume]);localRow.spacing=10
@@ -236,6 +238,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         }
     }
     @objc func refresh() {
+        liveSystemButton.isEnabled=mode.selectedSegment==0
+        liveSystemButton.toolTip=mode.selectedSegment==0 ? "Route audio using the current gain and EQ settings" : "External video keeps its original audio. Choose Music Mode for multi-speaker audio."
         let outputs = (try? manager.outputs()) ?? []
         let current = outputs.first { $0.id == manager.defaultOutput() }
         let time = player.currentTime().seconds
