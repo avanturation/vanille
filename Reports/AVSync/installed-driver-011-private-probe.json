@@ -1,0 +1,171 @@
+{
+  "audioSaved": false,
+  "cases": [
+    {
+      "canBeDefault": 0,
+      "destroyStatus": 0,
+      "deviceLatencyFrames": 50,
+      "driverLatencyFrames": 0,
+      "ioCleanup": {
+        "io": 0,
+        "stop": 0
+      },
+      "ioTiming": {
+        "cycleFlags": 7,
+        "frames": 0,
+        "hostTimeValid": true,
+        "inputAgeAtCallbackMS": 12.366291666666665,
+        "inputFlags": 7,
+        "outputFlags": 7,
+        "outputHostSeconds": 3094173.299192333,
+        "outputMinusCallbackMS": 11.550333333333333,
+        "outputMinusCycleMS": 11.7035,
+        "outputSampleTime": 91200,
+        "rateScalar": 0.999998375,
+        "rateScalarValid": true,
+        "sampleTimeValid": true,
+        "sourceFrame": 0
+      },
+      "outputChannels": 4,
+      "safetyOffsetFrames": 50,
+      "sampleRate": 48000,
+      "streams": [
+        {
+          "firstChannel": 1,
+          "latencyFrames": 0
+        },
+        {
+          "firstChannel": 3,
+          "latencyFrames": 0
+        }
+      ],
+      "timingIsMain": false
+    },
+    {
+      "canBeDefault": 0,
+      "destroyStatus": 0,
+      "deviceLatencyFrames": 0,
+      "driverLatencyFrames": 0,
+      "ioCleanup": {
+        "io": 0,
+        "stop": 0
+      },
+      "ioTiming": {
+        "cycleFlags": 7,
+        "frames": 0,
+        "hostTimeValid": true,
+        "inputAgeAtCallbackMS": 13.792791666666666,
+        "inputFlags": 7,
+        "outputFlags": 7,
+        "outputHostSeconds": 3094174.0149620418,
+        "outputMinusCallbackMS": 12.707208333333332,
+        "outputMinusCycleMS": 12.757166666666667,
+        "outputSampleTime": 2548592,
+        "rateScalar": 1,
+        "rateScalarValid": true,
+        "sampleTimeValid": true,
+        "sourceFrame": 0
+      },
+      "outputChannels": 4,
+      "safetyOffsetFrames": 100,
+      "sampleRate": 48000,
+      "streams": [
+        {
+          "firstChannel": 1,
+          "latencyFrames": 0
+        },
+        {
+          "firstChannel": 3,
+          "latencyFrames": 0
+        }
+      ],
+      "timingIsMain": true
+    },
+    {
+      "canBeDefault": 0,
+      "destroyStatus": 0,
+      "deviceLatencyFrames": 50,
+      "driverLatencyFrames": 192000,
+      "ioCleanup": {
+        "io": 0,
+        "stop": 0
+      },
+      "ioTiming": {
+        "cycleFlags": 7,
+        "frames": 0,
+        "hostTimeValid": true,
+        "inputAgeAtCallbackMS": 12.285666666666668,
+        "inputFlags": 7,
+        "outputFlags": 7,
+        "outputHostSeconds": 3094174.824522375,
+        "outputMinusCallbackMS": 11.630958333333334,
+        "outputMinusCycleMS": 11.706333333333333,
+        "outputSampleTime": 164416,
+        "rateScalar": 0.999998375,
+        "rateScalarValid": true,
+        "sampleTimeValid": true,
+        "sourceFrame": 0
+      },
+      "outputChannels": 4,
+      "safetyOffsetFrames": 191950,
+      "sampleRate": 48000,
+      "streams": [
+        {
+          "firstChannel": 1,
+          "latencyFrames": 0
+        },
+        {
+          "firstChannel": 3,
+          "latencyFrames": 0
+        }
+      ],
+      "timingIsMain": false
+    },
+    {
+      "canBeDefault": 0,
+      "destroyStatus": 0,
+      "deviceLatencyFrames": 192000,
+      "driverLatencyFrames": 192000,
+      "ioCleanup": {
+        "io": 0,
+        "stop": 0
+      },
+      "ioTiming": {
+        "cycleFlags": 7,
+        "frames": 0,
+        "hostTimeValid": true,
+        "inputAgeAtCallbackMS": 13.82825,
+        "inputFlags": 7,
+        "outputFlags": 7,
+        "outputHostSeconds": 3094175.538212042,
+        "outputMinusCallbackMS": 10.588416666666665,
+        "outputMinusCycleMS": 10.668416666666666,
+        "outputSampleTime": 2621708,
+        "rateScalar": 1,
+        "rateScalarValid": true,
+        "sampleTimeValid": true,
+        "sourceFrame": 0
+      },
+      "outputChannels": 4,
+      "safetyOffsetFrames": 0,
+      "sampleRate": 48000,
+      "streams": [
+        {
+          "firstChannel": 1,
+          "latencyFrames": 0
+        },
+        {
+          "firstChannel": 3,
+          "latencyFrames": 0
+        }
+      ],
+      "timingIsMain": true
+    }
+  ],
+  "defaultPreserved": true,
+  "hidden": 1,
+  "latencyRestored": true,
+  "scope": "Private virtual-plus-physical aggregates. No default output change. No Safari acceptance claim.",
+  "standaloneDefaultAllowed": 0,
+  "timingDriverLoaded": true
+}

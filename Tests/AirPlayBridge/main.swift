@@ -47,6 +47,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     private var virtualProbeRunning=false
     private var virtualAttempt=UUID()
     private var virtualPreparing=false
+    private var virtualRequest:VirtualRouteRequest?
     var sourcePlayerProbe:LatencyAwarePlayerProbe?
     let syncWAVLock=NSLock()
     let controlledVideo=ControlledVideo()
@@ -186,6 +187,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         if let virtualRoute { virtualRoute.restore();lastVirtualRoute=virtualRoute.snapshot };virtualRoute=nil
     }
     @objc func stop() {
+        virtualRequest?.cancel();virtualRequest=nil
         virtualAttempt=UUID();virtualPreparing=false
         if let measurement { measurement.onFinish=nil;measurement.stop();lastMeasurement=measurement.summary };measurement=nil
         controlledVideo.stop();stopLive();player.pause();player.replaceCurrentItem(with:nil);refresh()
@@ -227,7 +229,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
             virtualSourcePlayerLatency=["error":"Run the installed virtual-output property probe first"];refresh();return
         }
         sourcePlayerProbe?.cancel();virtualProbeRunning=true
-        virtualSourcePlayerLatency=["status":"Comparing ordinary player with zero and four-second true device latency"]
+        virtualSourcePlayerLatency=["status":"Comparing ordinary player with zero, four seconds, and warm zero true device latency"]
         sourcePlayerProbe=LatencyAwarePlayerProbe(physical:device,url:baseURL.appendingPathComponent("sync.wav"),virtualTiming:true,
             mainTiming:verified["timingIsMain"] as? Bool ?? false) { [weak self] report in
                 self?.virtualProbeRunning=false;self?.virtualSourcePlayerLatency=report;self?.refresh()
@@ -236,15 +238,16 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     }
     @objc func startVirtualVideo() {
         guard !virtualProbeRunning,!virtualPreparing else { return }
-        // The path stays gated until the installed host actually exposes the requested latency.
+        // The route constructor validates real host latency before changing the default.
         let rows=virtualLatencyProbe["cases"] as? [[String:Any]] ?? []
-        guard let verified=rows.first(where: {
+        let verified=rows.first(where: {
             ($0["driverLatencyFrames"] as? UInt32)==192_000 && ($0["deviceLatencyFrames"] as? UInt32 ?? 0)>=192_000 &&
-                ($0["canBeDefault"] as? UInt32)==1 && $0["error"] == nil
-        }) else { liveError="Install the timing driver and run Virtual Output Latency Probe first. The original route is preserved.";refresh();return }
-        let useTiming=verified["timingIsMain"] as? Bool ?? false
+                ($0["isPrivate"] as? Bool)==false && ($0["requestedStacked"] as? Int)==1 && $0["error"] == nil
+        })
+        let useTiming=verified?["timingIsMain"] as? Bool ?? true
         stop();liveError="";virtualPreparing=true
         let attempt=UUID();virtualAttempt=attempt
+        let request=VirtualRouteRequest();virtualRequest=request
         do {
             guard let device=try manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { throw AudioFailure(operation:"Restore MR4 before testing video output",status:-1) }
             let settings=StateStore().load()
@@ -257,14 +260,23 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
                 do {
                     // Initial value comes from the earlier 3.7–4.6 s measurements, not a user delay control.
                     let route=try LatencyDeclaredRoute(physical:device,frames:192_000,mainTiming:useTiming)
+                    do { try route.activate(cancelled: { request.cancelled.load(ordering:.acquiring) }) }
+                    catch {
+                        route.restore();let report=route.snapshot
+                        DispatchQueue.main.async {
+                            guard self.virtualAttempt==attempt else { return }
+                            self.virtualPreparing=false;self.lastVirtualRoute=report;self.liveError=error.localizedDescription;self.refresh()
+                        }
+                        return
+                    }
                     DispatchQueue.main.async {
                         guard self.virtualAttempt==attempt else { route.restore();return }
                         self.virtualPreparing=false;self.virtualRoute=route
                         do {
-                            try route.activate()
                             let session=try LiveBridgeSession(player:self.player,device:device,apps:apps,settings:settings,tone:false,
                                 captureDeviceUID:LatencyDeclaredRoute.uid,expectedDefault:route.object)
                             self.live=session
+                            try session.replaceOriginal(true)
                             session.onFailure={ [weak self] error in
                                 self?.liveError=error;self?.player.pause();self?.player.replaceCurrentItem(with:nil)
                                 self?.stopLive();self?.refresh()
@@ -336,7 +348,9 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         liveSystemButton.isEnabled=mode.selectedSegment==0
         liveSystemButton.toolTip=mode.selectedSegment==0 ? "Route audio using the current gain and EQ settings" : "External video keeps its original audio. Choose Music Mode for multi-speaker audio."
         let outputs = (try? manager.outputs()) ?? []
-        let current = outputs.first { $0.id == manager.defaultOutput() }
+        let current = outputs.first { $0.id == manager.defaultOutput() } ?? virtualRoute.map {
+            OutputDevice(id:$0.object,uid:LatencyDeclaredRoute.uid,name:"Vanille Video Output",channels:4,sampleRate:48_000,transport:kAudioDeviceTransportTypeAggregate)
+        }
         let time = player.currentTime().seconds
         let item = player.currentItem
         if let live,live.ready,!live.startedItem,let base=live.baseURL {

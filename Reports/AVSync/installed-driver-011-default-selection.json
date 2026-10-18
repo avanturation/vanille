@@ -1,0 +1,22 @@
+{
+  "defaultOutput": "CalDigit TS4 Audio - Rear",
+  "error": "The audio server did not select the experimental output (-1)",
+  "live": {
+  },
+  "virtualOutput": {
+    "activationWaitMS": 3014.788031578064,
+    "aggregateExists": false,
+    "canBeDefault": 0,
+    "cleanup": {
+      "destroyAggregate": 0,
+      "restoreLatency": 0
+    },
+    "declaredFrames": 192000,
+    "declaredMS": 4000,
+    "externalVideoSyncVerified": false,
+    "hidden": 0,
+    "isSystemDefault": false,
+    "timingIsMain": true
+  },
+  "virtualOutputPreparing": false
+}

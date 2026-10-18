@@ -86,7 +86,7 @@ check("Plug-in publishes one device", size(1, kAudioPlugInPropertyDeviceList) ==
 check("Object ownership", word(2, kAudioObjectPropertyOwner) == 1 && word(3, kAudioObjectPropertyOwner) == 2)
 check("Device and stream class", word(2, kAudioObjectPropertyClass) == kAudioDeviceClassID && word(3, kAudioObjectPropertyClass) == kAudioStreamClassID)
 check("Hidden timing participant", word(2, kAudioDevicePropertyIsHidden) == 1)
-check("Cannot become standalone default", word(2, kAudioDevicePropertyDeviceCanBeDefaultDevice, output) == 0 && word(2, kAudioDevicePropertyDeviceCanBeDefaultSystemDevice, output) == 0)
+check("Internal output supports aggregate eligibility while hidden", word(2, kAudioDevicePropertyDeviceCanBeDefaultDevice, output) == 1 && word(2, kAudioDevicePropertyIsHidden) == 1 && word(2, kAudioDevicePropertyDeviceCanBeDefaultSystemDevice, output) == 0)
 check("No input stream", size(2, kAudioDevicePropertyStreams, input) == 0)
 check("One stereo output stream", word(2, kAudioDevicePropertyStreams, output) == 3 && word(3, kAudioStreamPropertyStartingChannel) == 1)
 check("No volume controls to confuse aggregate", size(2, kAudioObjectPropertyControlList) == 0)
@@ -196,6 +196,15 @@ DispatchQueue.concurrentPerform(iterations: 4) { worker in
 }
 check("100,000 concurrent clock/configuration calls", concurrentFailures.load(ordering: .relaxed) == 0)
 check("Latency can return to zero", api.PerformDeviceConfigurationChange(reference, 2, 0, nil) == noErr && word(2, kAudioDevicePropertyLatency, output) == 0)
+check("Invalid internal configuration is rejected", requestLatency("device:100:2:1") != noErr && requestLatency("device:100:1:2") != noErr && requestLatency("device:NaN:1:1") != noErr)
+check("Configuration needs host approval", requestLatency("device:96000:0:0")==noErr && word(2,kAudioDevicePropertyIsHidden)==1 && word(2,kAudioDevicePropertyDeviceCanBeDefaultDevice,output)==1)
+let proposed=hostState.requests.last!.1
+check("Aborted configuration preserves hidden eligibility", api.AbortDeviceConfigurationChange(reference,2,proposed,nil)==noErr && word(2,kAudioDevicePropertyIsHidden)==1)
+check("Approved configuration changes properties", api.PerformDeviceConfigurationChange(reference,2,proposed,nil)==noErr && word(2,kAudioDevicePropertyIsHidden)==0 && word(2,kAudioDevicePropertyDeviceCanBeDefaultDevice,output)==0 && word(2,kAudioDevicePropertyLatency,output)==96000)
+check("Plain latency change preserves device configuration", api.PerformDeviceConfigurationChange(reference,2,0,nil)==noErr && word(2,kAudioDevicePropertyIsHidden)==0 && word(2,kAudioDevicePropertyDeviceCanBeDefaultDevice,output)==0)
+check("Reserved configuration bits are rejected", api.PerformDeviceConfigurationChange(reference,2,(UInt64(1)<<63)|(UInt64(1)<<62),nil) != noErr)
+check("Request hidden eligible configuration", requestLatency("device:0:1:1")==noErr)
+check("Restore hidden eligible state", api.PerformDeviceConfigurationChange(reference,2,hostState.requests.last!.1,nil)==noErr && word(2,kAudioDevicePropertyIsHidden)==1 && word(2,kAudioDevicePropertyDeviceCanBeDefaultDevice,output)==1)
 let passed = results.filter { $0.1 }.count
 print("\(passed)/\(results.count) latency driver checks passed. Driver was not installed; physical audio and Safari A/V are not verified.")
 if let destination = ProcessInfo.processInfo.environment["VANILLE_DRIVER_REPORT"] {

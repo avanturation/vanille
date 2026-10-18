@@ -1,0 +1,100 @@
+{
+  "audioSaved": false,
+  "cases": [
+    {
+      "clockQueryStatuses": [
+        -12746,
+        0
+      ],
+      "commandToSourcePlayerTimeline": {
+        "firstToLastWindowChangeMS": -0.003374666666104531,
+        "maximumMS": 1904.5035406666661,
+        "medianMS": 1904.4868323333333,
+        "minimumMS": 1903.7565406666665,
+        "observedSeconds": 5.000013125000001,
+        "p05MS": 1903.8999993333325,
+        "p95MS": 1904.4982910000003,
+        "rSquared": 0.0009252897358844944,
+        "samples": 51,
+        "slopeMSPerMinute": -0.24159292256527118,
+        "status": "short observation",
+        "stepsOver100MS": 0
+      },
+      "configuredDeviceLatencyFrames": 0,
+      "destroyStatus": 0,
+      "deviceLatencyFrames": 0,
+      "ioCleanup": {
+        "io": 0,
+        "stop": 0
+      },
+      "ioTiming": {
+        "cycleFlags": 7,
+        "frames": 0,
+        "hostTimeValid": true,
+        "inputAgeAtCallbackMS": 13.841041666666666,
+        "inputFlags": 7,
+        "outputFlags": 7,
+        "outputHostSeconds": 3094222.5268787085,
+        "outputMinusCallbackMS": 12.658958333333333,
+        "outputMinusCycleMS": 12.750958333333333,
+        "outputSampleTime": 4877164,
+        "rateScalar": 1,
+        "rateScalarValid": true,
+        "sampleTimeValid": true,
+        "sourceFrame": 0
+      },
+      "playerClockMatchesAggregate": 102,
+      "safetyOffsetFrames": 100
+    },
+    {
+      "clockQueryStatuses": [
+        -12746,
+        0
+      ],
+      "commandToSourcePlayerTimeline": {
+        "firstToLastWindowChangeMS": 0.0002926666657003807,
+        "maximumMS": 4112.916958999999,
+        "medianMS": 4112.897749666666,
+        "minimumMS": 4111.6725,
+        "observedSeconds": 5.000221833333333,
+        "p05MS": 4112.195374999999,
+        "p95MS": 4112.913500333333,
+        "rSquared": 0.0007823087025625767,
+        "samples": 51,
+        "slopeMSPerMinute": 0.3346048414085083,
+        "status": "short observation",
+        "stepsOver100MS": 0
+      },
+      "configuredDeviceLatencyFrames": 192000,
+      "destroyStatus": 0,
+      "deviceLatencyFrames": 192000,
+      "ioCleanup": {
+        "io": 0,
+        "stop": 0
+      },
+      "ioTiming": {
+        "cycleFlags": 7,
+        "frames": 0,
+        "hostTimeValid": true,
+        "inputAgeAtCallbackMS": 13.788125,
+        "inputFlags": 7,
+        "outputFlags": 7,
+        "outputHostSeconds": 3094234.8554620417,
+        "outputMinusCallbackMS": 10.628541666666667,
+        "outputMinusCycleMS": 10.676458333333333,
+        "outputSampleTime": 5468936,
+        "rateScalar": 1,
+        "rateScalarValid": true,
+        "sampleTimeValid": true,
+        "sourceFrame": 0
+      },
+      "playerClockMatchesAggregate": 120,
+      "safetyOffsetFrames": 0
+    }
+  ],
+  "date": "2026-10-18T08:55:52Z",
+  "defaultPreserved": true,
+  "latencyRestoreStatus": 0,
+  "scope": "Unmodified source AVPlayer, synthetic audio, private output only, no timeline correction, no global route change",
+  "virtualTiming": true
+}

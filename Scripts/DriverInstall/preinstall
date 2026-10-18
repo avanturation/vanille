@@ -7,14 +7,19 @@ if [[ -e "$DRIVER_PATH" || -L "$DRIVER_PATH" ]]; then
     exit 1
   fi
   DRIVER_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$DRIVER_PATH/Contents/Info.plist")"
+  DRIVER_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$DRIVER_PATH/Contents/Info.plist")"
   DRIVER_HASH="$(/usr/bin/shasum -a 256 "$DRIVER_PATH/Contents/MacOS/VanilleLatencyClock")"
-  if [[ "$DRIVER_ID" != "com.avanturation.Vanille.LatencyClock" || "${DRIVER_HASH%% *}" != "524f5c283e808a3e3185a1fe16776f650ec1c07ae38676ccd1fdb8177dc36db3" ]]; then
+  if [[ "$DRIVER_ID" != "com.avanturation.Vanille.LatencyClock" ]]; then
     print -u2 "An unrecognized driver version already exists. Nothing changed."
     exit 1
   fi
+  case "$DRIVER_VERSION:${DRIVER_HASH%% *}" in
+    0.1.0:524f5c283e808a3e3185a1fe16776f650ec1c07ae38676ccd1fdb8177dc36db3|0.1.1:5c48d9109b3c0f1eefb56790e7841461e52677c8b7c2fba669ec9c816e6a0dce) ;;
+    *) print -u2 "The existing binary is not a recognized Vanille build. Nothing changed."; exit 1 ;;
+  esac
   BACKUP_ROOT="/Library/Audio/Plug-Ins/Vanille Disabled Drivers"
   /bin/mkdir -p "$BACKUP_ROOT"
-  BACKUP_PATH="$BACKUP_ROOT/VanilleLatencyClock-0.1.0-$(/bin/date +%Y%m%d-%H%M%S).driver"
+  BACKUP_PATH="$BACKUP_ROOT/VanilleLatencyClock-$DRIVER_VERSION-$(/bin/date +%Y%m%d-%H%M%S).driver"
   if [[ -e "$BACKUP_PATH" ]]; then exit 1; fi
   /bin/mv "$DRIVER_PATH" "$BACKUP_PATH"
 fi

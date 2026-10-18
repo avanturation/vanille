@@ -57,7 +57,7 @@
       "passed" : true
     },
     {
-      "name" : "Cannot become standalone default",
+      "name" : "Internal output supports aggregate eligibility while hidden",
       "passed" : true
     },
     {
@@ -267,11 +267,43 @@
     {
       "name" : "Latency can return to zero",
       "passed" : true
+    },
+    {
+      "name" : "Invalid internal configuration is rejected",
+      "passed" : true
+    },
+    {
+      "name" : "Configuration needs host approval",
+      "passed" : true
+    },
+    {
+      "name" : "Aborted configuration preserves hidden eligibility",
+      "passed" : true
+    },
+    {
+      "name" : "Approved configuration changes properties",
+      "passed" : true
+    },
+    {
+      "name" : "Plain latency change preserves device configuration",
+      "passed" : true
+    },
+    {
+      "name" : "Reserved configuration bits are rejected",
+      "passed" : true
+    },
+    {
+      "name" : "Request hidden eligible configuration",
+      "passed" : true
+    },
+    {
+      "name" : "Restore hidden eligible state",
+      "passed" : true
     }
   ],
   "externalVideoSyncVerified" : false,
   "installed" : false,
-  "passed" : 67,
+  "passed" : 75,
   "physicalAudioVerified" : false,
-  "total" : 67
+  "total" : 75
 }

@@ -34,7 +34,7 @@ final class LatencyAwarePlayerProbe {
         queue.async { self.beginCase() }
     }
     private func beginCase() {
-        let extra=index==0 ? 0.0 : physical.sampleRate*4
+        let extra=index==1 ? physical.sampleRate*4 : 0.0
         phase=[useVirtualTiming ? "configuredDeviceLatencyFrames" : "configuredExtraFrames":extra];points=[];matches=0;statuses=[]
         do {
             let uid="com.avanturation.Vanille.player-latency.\(UUID().uuidString)"
@@ -81,7 +81,7 @@ final class LatencyAwarePlayerProbe {
         probe.stop();phase["ioCleanup"]=probe.cleanup
         if aggregate != 0 { phase["destroyStatus"]=AudioHardwareDestroyAggregateDevice(aggregate) };aggregate=0
         rows.append(phase)
-        if index==0,!stopped { index=1;beginCase();return }
+        if index < (useVirtualTiming ? 2 : 1),!stopped { index += 1;beginCase();return }
         stopped=true
         let restoreStatus=restoreTiming()
         let report:[String:Any]=["cases":rows,"defaultPreserved":DeviceManager().defaultOutput()==original,"virtualTiming":useVirtualTiming,"latencyRestoreStatus":restoreStatus,"scope":"Unmodified source AVPlayer, synthetic audio, private output only, no timeline correction, no global route change","audioSaved":false,"date":ISO8601DateFormatter().string(from:Date())]

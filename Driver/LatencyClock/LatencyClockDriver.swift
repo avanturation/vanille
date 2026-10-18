@@ -13,6 +13,9 @@ enum LatencyClock {
     static let rate = 48_000.0
     static let period: UInt32 = 16_384 // AudioServerPlugIn requires at least 10,923 frames.
     static let maximumLatency: UInt32 = 480_000
+    static let configurationMarker:UInt64 = 1 << 63
+    static let hiddenBit:UInt64 = 1 << 32
+    static let eligibleBit:UInt64 = 1 << 33
     static let latencyControl: AudioObjectPropertySelector = 0x766C6174 // 'vlat', frames at 48 kHz
     static let deviceUID = "com.avanturation.Vanille.LatencyClock.Device" as CFString
     static let bundleID = "com.avanturation.Vanille.LatencyClock" as CFString
@@ -31,6 +34,8 @@ enum LatencyClock {
 private final class ClockState {
     let references = Atomic<UInt32>(0)
     let latency = Atomic<UInt32>(0)
+    let hidden = Atomic<Bool>(true)
+    let aggregateEligible = Atomic<Bool>(true)
     let ioClients = Atomic<UInt32>(0)
     let writes = Atomic<UInt64>(0)
     let frames = Atomic<UInt64>(0)
@@ -137,8 +142,13 @@ private func property(_ object: AudioObjectID, _ address: AudioObjectPropertyAdd
         case kAudioDevicePropertyClockDomain: return .word(0)
         case kAudioDevicePropertyDeviceIsAlive: return .word(1)
         case kAudioDevicePropertyDeviceIsRunning: return .word(clockState.ioClients.load(ordering: .acquiring) > 0 ? 1 : 0)
-        case kAudioDevicePropertyDeviceCanBeDefaultDevice, kAudioDevicePropertyDeviceCanBeDefaultSystemDevice: return .word(0)
-        case kAudioDevicePropertyIsHidden: return .word(1)
+        case kAudioDevicePropertyDeviceCanBeDefaultDevice:
+            // Core Audio combines subdevice eligibility for an aggregate. Hidden status
+            // keeps this internal device out of normal output lists; eligibility must
+            // remain true so the physical-plus-timing aggregate can be selected.
+            return .word(scope != kAudioObjectPropertyScopeInput && clockState.aggregateEligible.load(ordering:.acquiring) ? 1 : 0)
+        case kAudioDevicePropertyDeviceCanBeDefaultSystemDevice: return .word(0)
+        case kAudioDevicePropertyIsHidden: return .word(clockState.hidden.load(ordering:.acquiring) ? 1 : 0)
         case kAudioDevicePropertyLatency: return .word(scope == kAudioObjectPropertyScopeOutput ? clockState.latency.load(ordering: .acquiring) : 0)
         case kAudioDevicePropertySafetyOffset: return .word(0)
         case kAudioDevicePropertyStreams: return .ids(scope == kAudioObjectPropertyScopeInput ? [] : [3])
@@ -220,9 +230,16 @@ private func makeInterface() -> AudioServerPlugInDriverInterface {
         return noErr
     }, PerformDeviceConfigurationChange: { _, object, frames, _ in
         guard object == LatencyClock.device else { return kAudioHardwareBadObjectError }
-        guard frames <= UInt64(LatencyClock.maximumLatency) else { return kAudioHardwareIllegalOperationError }
+        let explicit=frames & LatencyClock.configurationMarker != 0
+        let allowed=LatencyClock.configurationMarker | LatencyClock.hiddenBit | LatencyClock.eligibleBit | UInt64(UInt32.max)
+        let sampleFrames=explicit ? frames & UInt64(UInt32.max) : frames
+        guard sampleFrames <= UInt64(LatencyClock.maximumLatency),!explicit || frames & ~allowed == 0 else { return kAudioHardwareIllegalOperationError }
+        if explicit {
+            clockState.hidden.store(frames & LatencyClock.hiddenBit != 0,ordering:.releasing)
+            clockState.aggregateEligible.store(frames & LatencyClock.eligibleBit != 0,ordering:.releasing)
+        }
         // Only the host's approved configuration callback can change presentation latency.
-        clockState.latency.store(UInt32(frames), ordering: .releasing)
+        clockState.latency.store(UInt32(sampleFrames), ordering: .releasing)
         return noErr
     }, AbortDeviceConfigurationChange: { _, object, _, _ in object == LatencyClock.device ? noErr : kAudioHardwareBadObjectError },
     HasProperty: { _, object, _, address in DarwinBoolean(property(object, address.pointee) != nil) }, IsPropertySettable: { _, object, _, address, output in
@@ -253,13 +270,23 @@ private func makeInterface() -> AudioServerPlugInDriverInterface {
             guard size == MemoryLayout<UnsafeRawPointer?>.size else { return kAudioHardwareBadPropertySizeError }
             guard let pointer = data.loadUnaligned(as: UnsafeRawPointer?.self) else { return kAudioHardwareIllegalOperationError }
             let object = Unmanaged<CFTypeRef>.fromOpaque(pointer).takeUnretainedValue()
-            guard CFGetTypeID(object) == CFStringGetTypeID(),
-                  let frames = UInt32((object as! CFString) as String) else { return kAudioHardwareIllegalOperationError }
+            guard CFGetTypeID(object) == CFStringGetTypeID() else { return kAudioHardwareIllegalOperationError }
+            let text=(object as! CFString) as String
+            let frames:UInt32,action:UInt64
+            if let plain=UInt32(text) { frames=plain;action=UInt64(plain) }
+            else {
+                // Internal test configuration. Ordinary clients continue to send only frames.
+                let fields=text.split(separator:":",omittingEmptySubsequences:false)
+                guard fields.count==4,fields[0]=="device",let value=UInt32(fields[1]),
+                      let hidden=UInt32(fields[2]),hidden<=1,let eligible=UInt32(fields[3]),eligible<=1 else { return kAudioHardwareIllegalOperationError }
+                frames=value;action=LatencyClock.configurationMarker | UInt64(value) |
+                    (hidden==1 ? LatencyClock.hiddenBit : 0) | (eligible==1 ? LatencyClock.eligibleBit : 0)
+            }
             guard frames <= LatencyClock.maximumLatency else { return kAudioHardwareIllegalOperationError }
-            if frames == clockState.latency.load(ordering: .acquiring) { return noErr }
+            if action & LatencyClock.configurationMarker == 0,frames == clockState.latency.load(ordering: .acquiring) { return noErr }
             clockState.lifecycle.lock(); let host = clockState.host; clockState.lifecycle.unlock()
             guard let host else { return kAudioHardwareNotReadyError }
-            return host.pointee.RequestDeviceConfigurationChange(host, 2, UInt64(frames), nil)
+            return host.pointee.RequestDeviceConfigurationChange(host, 2, action, nil)
         case (2, kAudioDevicePropertyNominalSampleRate):
             guard size == 8 else { return kAudioHardwareBadPropertySizeError }
             return data.loadUnaligned(as: Double.self) == LatencyClock.rate ? noErr : kAudioHardwareIllegalOperationError
