@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "build": "2",
+  "minimumOS": "15.0",
+  "architecture": "arm64",
+  "sdk": "27.0",
+  "archiveSHA256": "45b21e55f732683d6a17c3676c174fd93e5e65a7da413be16f7c583abfefea03",
+  "extractedArchiveStrictSignaturePassed": true,
+  "signing": "ad hoc",
+  "notarized": false,
+  "publicBinaryPublished": false,
+  "diagnosticArchiveRejected": true,
+  "runtimeDependencies": "Apple system frameworks and libraries only",
+  "localBuildMethod": "Scripts/prepare-release.sh; full Xcode build runs separately in CI"
+}

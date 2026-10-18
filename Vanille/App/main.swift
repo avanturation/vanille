@@ -22,16 +22,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.sendAction(on:[.leftMouseUp,.rightMouseUp])
         item.button?.setAccessibilityLabel("Vanille audio controls")
         item.button?.toolTip = "Vanille"
-        popover.behavior = .transient; popover.animates = false
+        popover.behavior = .transient
         let controller = MenuBarViewController(state:state)
         controller.showEQ = { [weak self] in self?.showEqualizer() }
         controller.showSettings = { [weak self] in self?.showSettings() }
         controller.showGroups = { [weak self] in self?.showGroups() }
         controller.onSizeChange = { [weak self] in self?.popover.contentSize = $0 }
         popover.contentViewController = controller
-        popover.contentSize = NSSize(width:348,height:430)
+        popover.contentSize = NSSize(width:360,height:430)
+        let firstLaunch = !state.store.hasSavedSettings
         state.start()
-        if CommandLine.arguments.contains("--show") { showPopover() }
+        if firstLaunch || CommandLine.arguments.contains("--show") { showPopover() }
     }
     private func installMainMenu() {
         let menu = NSMenu()
@@ -87,7 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         routingVerification = RoutingVerification(state:state); routingVerification?.run()
     }
     @objc private func toggleTestAppearance() {
-        NSApp.appearance = NSApp.appearance?.name == .darkAqua ? nil : NSAppearance(named:.darkAqua)
+        let appearance = NSApp.appearance?.name == .darkAqua ? nil : NSAppearance(named:.darkAqua)
+        NSApp.appearance = appearance
+        popover.appearance = appearance
+        popover.contentViewController?.view.appearance = appearance
     }
     #endif
     @objc func showEqualizer() {

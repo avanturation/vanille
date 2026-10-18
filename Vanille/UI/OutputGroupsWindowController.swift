@@ -39,16 +39,19 @@ final class DeviceRouteRow:NSView {
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
     private func update() {
         guard let route = state.deviceRoutes.first(where: { $0.id == id }) else { return }
-        let connected = state.outputDevice(for:id) != nil
+        let device = state.outputDevice(for:id)
+        let connected = device != nil
+        let processing = state.processing && state.metrics.running && device.map { state.metrics.outputUIDs.contains($0.uid) } == true
         enabled.state = route.enabled ? .on : .off; enabled.isEnabled = connected
         if !slider.isHighlighted { slider.doubleValue = Double(route.volume) }
-        slider.isEnabled = connected && route.enabled && !route.muted
+        slider.isEnabled = processing && route.enabled && !route.muted
+        slider.toolTip = processing ? "Output level" : "Start processing to adjust this group's level."
         slider.isHidden = !connected; value.isHidden = !connected; mute.isHidden = !connected
         unavailable.isHidden = connected
         unavailable.stringValue = route.isAssigned ? "Disconnected · Original audio remains available" : "Not assigned · Choose an output in Edit Groups"
         value.stringValue = "\(Int((route.volume*100).rounded()))%"
         mute.image = UI.symbol(route.muted ? "speaker.slash.fill" : "speaker.wave.2",label:route.muted ? "Unmute" : "Mute")
-        mute.isEnabled = route.enabled
+        mute.isEnabled = processing && route.enabled
     }
     deinit { if let token { state.removeObserver(token) } }
 }
@@ -118,6 +121,7 @@ final class OutputGroupsWindowController:NSWindowController {
     private let note = UI.text("",size:11,color:.secondaryLabelColor)
     private var signature = ""
     private var useButton:ActionButton!
+    private var addOutputButton:ActionButton!
     private let activeStatus = UI.text("",size:11,color:.secondaryLabelColor)
     init(state:AppState) {
         self.state = state; selectedID = state.saved.selectedGroupID ?? state.saved.outputGroups.first?.id
@@ -145,8 +149,9 @@ final class OutputGroupsWindowController:NSWindowController {
         rows.topAnchor.constraint(equalTo:scroll.contentView.topAnchor).isActive = true
         scroll.heightAnchor.constraint(greaterThanOrEqualToConstant:130).isActive = true
         root.addArrangedSubview(scroll)
+        addOutputButton = ActionButton("Add Output") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.addGroupDevice(id) }
         root.addArrangedSubview(UI.horizontal([
-            ActionButton("Add Output") { [weak self] in guard let self, let id = self.selectedID else { return }; self.state.addGroupDevice(id) },NSView(),
+            addOutputButton,NSView(),
             ActionButton("Sound Settings…") { UI.openSoundSettings() }
         ]))
         note.maximumNumberOfLines = 4; note.lineBreakMode = .byWordWrapping; note.preferredMaxLayoutWidth = 584
@@ -160,6 +165,7 @@ final class OutputGroupsWindowController:NSWindowController {
         useButton.title = active ? "In Use" : "Use Group"; useButton.isEnabled = selectedID != nil && !active
         activeStatus.stringValue = active ? (state.saved.processingPaused ? "This group is selected. Start processing to apply it." : "This group is in use.") : "Editing this group. Choose Use Group to apply its settings."
         let group = state.saved.outputGroups.first { $0.id == selectedID }
+        addOutputButton.isEnabled = group.map { $0.devices.count < 8 } ?? false
         let newSignature = (group?.id ?? "") + (group?.devices.map { $0.id+$0.name }.joined(separator:";") ?? "")
         if signature != newSignature {
             signature = newSignature
@@ -169,7 +175,7 @@ final class OutputGroupsWindowController:NSWindowController {
                 row.widthAnchor.constraint(equalTo:rows.widthAnchor).isActive = true
             } }
         }
-        note.stringValue = state.notice ?? "Connect AirPlay in Control Center → Sound. One system AirPlay connection is available; two HomePod pairs cannot be selected independently here."
+        note.stringValue = state.notice ?? "Groups use connected system outputs. For AirPlay, connect a speaker in macOS Sound. This route supports one system AirPlay connection."
     }
     private func newGroup() {
         UI.prompt(title:"New Output Group",message:"Name the group.",window:window) { [weak self] name in

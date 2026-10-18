@@ -1,0 +1,26 @@
+{
+  "allPassed" : false,
+  "date" : "2026-10-18T13:14:46Z",
+  "measurements" : [
+    {
+      "passed" : true,
+      "test" : "Default output unchanged"
+    },
+    {
+      "after" : 1,
+      "before" : 1,
+      "passed" : true,
+      "test" : "No leaked process taps"
+    },
+    {
+      "after" : 7,
+      "before" : 7,
+      "passed" : true,
+      "test" : "No leaked aggregate devices"
+    }
+  ],
+  "method" : "Unmuted process tap independently reads Vanille HAL output. No audio samples are retained.",
+  "output" : "AirPlay",
+  "sampleRate" : 48000,
+  "system" : "Version 27.0 (Build 26A428)"
+}

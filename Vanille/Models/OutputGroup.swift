@@ -29,15 +29,9 @@ struct OutputGroup: Codable, Equatable, Identifiable {
     var id = UUID().uuidString
     var name: String
     var devices: [DeviceRoute]
-    static var defaults: [OutputGroup] {
-        let wired = DeviceRoute(id:"unassigned.wired",name:"MR4 / Wired Output")
-        let homepod = DeviceRoute(id:"unassigned.homepod",name:"HomePod Stereo Pair")
-        let mini = DeviceRoute(id:"unassigned.mini",name:"HomePod mini Stereo Pair")
-        return [OutputGroup(id:"group.desktop",name:"Desktop",devices:[wired]),
-                OutputGroup(id:"group.homepods",name:"HomePods",devices:[homepod,mini]),
-                OutputGroup(id:"group.immersive",name:"Immersive",devices:[wired,homepod]),
-                OutputGroup(id:"group.fullroom",name:"Full Room",devices:[wired,homepod,mini])]
-    }
+    // New users start with their real system output. Groups are explicitly created
+    // from discovered devices; existing saved groups are decoded unchanged.
+    static var defaults: [OutputGroup] { [] }
 }
 
 enum LatencyAlignment {

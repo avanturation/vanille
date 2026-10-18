@@ -1,5 +1,7 @@
 # Test Report
 
+> Current restoration results are in [RESTORATION_REPORT.md](RESTORATION_REPORT.md). The direct wired + one system AirPlay baseline has been restored, with new native 17/12 checks and user video-sync confirmation. MR4-default retention and automatic HomePod connection remain partial. The body below is the earlier test history.
+
 2026-10-18 KST. 우선순위는 Multi-Device Routing입니다. **요구된 세 출력의 수락 검사는 미통과입니다.** EQ나 컴파일 성공을 그 대체 성과로 간주하지 않습니다.
 
 ## 환경과 방법

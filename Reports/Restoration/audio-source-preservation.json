@@ -1,0 +1,46 @@
+{
+  "baselineCodeCommit": "14084e9094477faf7f8b68212c2a00546bdf3f59",
+  "scope": "Production audio engine, DSP, HAL, process manager, timing and shared audio models; UI and AppState lifecycle changes are outside this scope.",
+  "files": [
+    {
+      "path": "Vanille/Audio/AudioEngine.swift",
+      "sha256": "d3df9887a60942ec2d5afcf4abd4544eb1899527f112c229bb7e38e2f744e490",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Audio/DeviceManager.swift",
+      "sha256": "0d381391e4bb4691ecd132bae97edb758af79721e9c6b44ed022cae211ec521b",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Audio/Equalizer.swift",
+      "sha256": "9b50d74e5514bf9769704b6c6f5b69b585c745e747d2b67047dd6fcca8aaf4a8",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Audio/HAL.swift",
+      "sha256": "78fce9deb8eb5cdb94c6e58c0cdbe2036a31515cc7936d15b873e946365f9d9c",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Audio/OutputMixer.swift",
+      "sha256": "8df6624a43c765f5a6eef4b7c5dec6e3c6342676b3a8f5a0ad71509b90918abf",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Audio/ProcessAudioManager.swift",
+      "sha256": "0a6d24a7da9db7a953b71476cc384ab642e2a832523eb6a5097423825c340b8e",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Audio/TimingPulse.swift",
+      "sha256": "d884e6e78d30c75da2e90e706a9bff197ec4217d2357c177505d34baf2cf26e2",
+      "identicalToBaseline": true
+    },
+    {
+      "path": "Vanille/Models/Models.swift",
+      "sha256": "e77628271ddfbe276fada5a2cd55a1e99ddd3a451e6653178221f5dff9fa8e44",
+      "identicalToBaseline": true
+    }
+  ]
+}

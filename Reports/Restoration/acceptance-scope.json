@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-18",
+  "baselineCodeCommit": "14084e9094477faf7f8b68212c2a00546bdf3f59",
+  "archiveBranch": "experiment/airplay-latency-archive",
+  "archiveCommit": "6a14b3c",
+  "listener": {
+    "source": "Chrome video",
+    "outputs": "Wired plus one system AirPlay",
+    "systemDefault": "AirPlay",
+    "result": "두 스피커와 영상이 맞음",
+    "precision": "Qualitative listener confirmation; no millisecond estimate requested"
+  },
+  "wiredDefaultTransition": {
+    "passed": false,
+    "initialAggregateChannels": 4,
+    "initialActiveSubdevices": 2,
+    "callbackChannelsAfterTransition": 2,
+    "systemAirPlayEndpointPresentAfterTransition": false,
+    "scope": "Existing routing probe; no renderer change"
+  },
+  "newUIStartup": {
+    "savedPreference": "Wired",
+    "currentDefaultBefore": "AirPlay",
+    "currentDefaultAfter": "AirPlay",
+    "activeProcessedOutputsAfterLaunch": 2,
+    "coldHomePodAutoconnectVerified": false
+  },
+  "postUIReadback": {
+    "appGainAndEQ": {
+      "passed": 17,
+      "total": 17,
+      "configuredOutputs": 2
+    },
+    "twoOutputRouting": {
+      "passed": 12,
+      "total": 12
+    },
+    "offline": {
+      "passed": 63,
+      "total": 63
+    },
+    "silenceObservation": "Stopped callback streams or fresh silent readback, with engine stopped; held spectral values are not treated as new signal."
+  }
+}

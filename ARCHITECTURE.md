@@ -1,5 +1,7 @@
 # Architecture
 
+> The current app uses this direct Core Audio baseline, with the renderer/DSP unchanged. The native UI uses the system-managed NSPopover Liquid Glass material and respects current system output at launch. Later HLS/multi-AirPlay/virtual-output work is archived separately. See [RESTORATION_REPORT.md](RESTORATION_REPORT.md) for current scope.
+
 ## 범위
 
 Vanille는 Swift/AppKit/Core Audio로 구현합니다. 최소 macOS 15, arm64입니다. 프로세스 탭을 읽고, 앱별 Gain → Global EQ → 출력별 Gain/Delay 순서로 처리하여 여러 독립 스테레오 장치에 씁니다. 사설 Aggregate를 기본 시스템 출력으로 선택하지 않습니다. 캡처 가능한 일반 오디오가 대상이며 DRM 오디오의 처리를 보장하지 않습니다.

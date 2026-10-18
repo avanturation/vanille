@@ -1,4 +1,49 @@
 import AppKit
+import CoreAudio
+
+/// NSPopover supplies its own Liquid Glass/native material. Apple's adoption
+/// guidance explicitly avoids an extra effect view inside a popover. Only the
+/// accessibility fallback paints an opaque system background.
+final class NativePopoverSurface: NSView {
+    let content = NSView()
+    private var surface: NSView?
+    private var observer: NSObjectProtocol?
+    private var solid = false
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        updateMaterial()
+        observer = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil, queue: .main) { [weak self] _ in self?.updateMaterial() }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    private func updateMaterial() {
+        content.removeFromSuperview(); surface?.removeFromSuperview()
+        let workspace = NSWorkspace.shared
+        solid = workspace.accessibilityDisplayShouldReduceTransparency || workspace.accessibilityDisplayShouldIncreaseContrast
+        if solid {
+            let background = NSView(); background.wantsLayer = true
+            background.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+            UI.pin(content, to: background); surface = background
+        } else {
+            let systemContent = NSView()
+            UI.pin(content, to: systemContent); surface = systemContent
+        }
+        if let surface { UI.pin(surface, to: self) }
+        updateSolidColor()
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateSolidColor()
+    }
+    private func updateSolidColor() {
+        guard solid else { return }
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            surface?.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        }
+    }
+    deinit { if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) } }
+}
 
 private final class TopAlignedStackView:NSStackView {
     override var isFlipped:Bool { true }
@@ -84,7 +129,33 @@ enum UI {
             child.bottomAnchor.constraint(equalTo: parent.bottomAnchor, constant: -inset)
         ])
     }
-    static func symbol(_ name: String, label: String) -> NSImage? { NSImage(systemSymbolName: name, accessibilityDescription: label) }
+    static func symbol(_ name: String, label: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: label)
+            ?? (name == "airplay.audio" ? NSImage(systemSymbolName:"airplayaudio",accessibilityDescription:label) : nil)
+    }
+    static func deviceSymbol(_ device: OutputDevice?) -> String {
+        guard let device else { return "speaker.wave.2" }
+        switch device.transport {
+        case kAudioDeviceTransportTypeAirPlay: return "airplay.audio"
+        case kAudioDeviceTransportTypeUSB: return "hifispeaker"
+        case kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort: return "display"
+        case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: return "headphones"
+        case kAudioDeviceTransportTypeAggregate: return "speaker.wave.2"
+        default: return "speaker.wave.2"
+        }
+    }
+    static func deviceKind(_ device: OutputDevice) -> String {
+        switch device.transport {
+        case kAudioDeviceTransportTypeAirPlay: return "AirPlay"
+        case kAudioDeviceTransportTypeUSB: return "USB"
+        case kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort: return "Display"
+        case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: return "Bluetooth"
+        case kAudioDeviceTransportTypeAggregate: return "Multiple outputs"
+        case kAudioDeviceTransportTypeVirtual: return "Virtual"
+        case kAudioDeviceTransportTypeBuiltIn: return "Built-in"
+        default: return "Audio output"
+        }
+    }
     static func prompt(title: String, message: String, initial: String = "", window: NSWindow?, completion: @escaping (String?) -> Void) {
         let alert = NSAlert(); alert.messageText = title; alert.informativeText = message
         alert.addButton(withTitle: "Save"); alert.addButton(withTitle: "Cancel")

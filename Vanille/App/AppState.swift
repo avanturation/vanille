@@ -73,9 +73,8 @@ final class AppState {
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() }
         RunLoop.main.add(timer, forMode: .common); self.timer = timer
         refresh()
-        if let uid = saved.selectedOutputUID, outputs.contains(where: { $0.uid == uid }), output?.uid != uid {
-            selectOutput(uid)
-        }
+        // A valid current system route wins over the last in-app choice. Restoring
+        // a different default at launch can tear down a system AirPlay connection.
     }
     @discardableResult func observe(_ callback: @escaping () -> Void) -> UUID {
         let token = UUID(); subscribers[token] = callback; return token
@@ -119,8 +118,13 @@ final class AppState {
                     saved.applications.removeValue(forKey:"com.apple.WebKit.GPU")
                 } else { saved.applications[app.id] = AppVolume(name: app.name) }
             }
-            if output == nil, let fallback = outputs.first(where: { !$0.isAirPlay }) ?? outputs.first {
-                // Only recover when HAL reports no valid default. Don't override a valid user's route.
+            let actualDefault = devices.defaultOutput()
+            let defaultAlive = (try? HAL.read(actualDefault,kAudioDevicePropertyDeviceIsAlive,default:UInt32(0))) == 1
+            if output == nil, !defaultAlive,
+               let fallback = outputs.first(where: { $0.uid == saved.selectedOutputUID })
+                ?? routingOutputs.first(where: { !$0.isAirPlay }) ?? outputs.first {
+                // Prefer connected hardware over an unrelated virtual device; never
+                // override a valid route just because it is hidden from our UI.
                 try devices.select(fallback); output = fallback
             }
         } catch { lastDiscoveryError = error.localizedDescription; notice = lastDiscoveryError }
@@ -171,6 +175,12 @@ final class AppState {
         do { try devices.select(device); saved.selectedOutputUID = uid; notice = nil }
         catch { notice = error.localizedDescription }
         store.save(saved); refresh(retry: true)
+    }
+    func selectSingleOutput(_ uid: String) {
+        guard outputs.contains(where: { $0.uid == uid }) else { return }
+        if output?.uid == uid && saved.selectedGroupID == nil { return }
+        saved.selectedGroupID = nil
+        selectOutput(uid)
     }
     func setMasterVolume(_ value: Float) {
         guard let output else { return }
@@ -276,7 +286,7 @@ final class AppState {
         }
         if uid.isEmpty { saved.outputGroups[i].devices[index].id = "unassigned.\(UUID().uuidString)" }
         else if let d = outputDevice(for:uid) {
-            let keepRoleName = saved.outputGroups[i].devices[index].id.hasPrefix("unassigned.")
+            let keepRoleName = saved.outputGroups[i].devices[index].id.hasPrefix("unassigned.") && saved.outputGroups[i].devices[index].name != "Output"
             saved.outputGroups[i].devices[index].id = uid
             if !keepRoleName { saved.outputGroups[i].devices[index].name = d.name }
         }

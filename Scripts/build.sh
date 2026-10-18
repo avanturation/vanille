@@ -2,7 +2,7 @@
 set -euo pipefail
 PROJECT_DIR="${0:A:h:h}"
 BUILD_DIR="${VANILLE_BUILD_DIR:-$PROJECT_DIR/build}"
-APP_PATH="${VANILLE_APP_PATH:-$PROJECT_DIR/../Vanille.app}"
+APP_PATH="${VANILLE_APP_PATH:-$BUILD_DIR/Vanille.app}"
 ZIP_PATH="${VANILLE_ZIP_PATH:-${APP_PATH%.app}-macos-arm64.zip}"
 SDK_PATH="$(xcrun --sdk macosx --show-sdk-path)"
 STAGING_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/VanilleBuild.XXXXXX")"
@@ -21,6 +21,12 @@ xcrun swiftc -O -whole-module-optimization -swift-version 5 \
   -module-name Vanille -framework AppKit -framework CoreAudio -framework AudioToolbox -framework ServiceManagement \
   "${EXTRA_FLAGS[@]}" "${SOURCES[@]}" -o "$STAGED_APP/Contents/MacOS/Vanille"
 cp "$PROJECT_DIR/Vanille/Resources/Info.plist" "$STAGED_APP/Contents/Info.plist"
+APP_VERSION="$(sed -n 's/^MARKETING_VERSION = //p' "$PROJECT_DIR/Config/Version.xcconfig")"
+APP_BUILD="$(sed -n 's/^CURRENT_PROJECT_VERSION = //p' "$PROJECT_DIR/Config/Version.xcconfig")"
+[[ "$APP_VERSION" == <->.<->.<-> && "$APP_BUILD" == <-> ]] || { print -u2 "Invalid app version configuration"; exit 1; }
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$STAGED_APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $APP_BUILD" "$STAGED_APP/Contents/Info.plist"
+cp "$PROJECT_DIR/LICENSE" "$STAGED_APP/Contents/Resources/LICENSE.txt"
 /usr/bin/codesign --force --sign - --identifier com.avanturation.Vanille "$STAGED_APP"
 /usr/bin/codesign --verify --strict "$STAGED_APP"
 # Sign outside iCloud Drive: File Provider may attach FinderInfo to bundles in Documents.

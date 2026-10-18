@@ -5,6 +5,7 @@ final class StateStore {
     private let queue = DispatchQueue(label: "com.avanturation.Vanille.persistence", qos: .utility)
     private var pending: DispatchWorkItem?
     private(set) var loadWarning: String?
+    var hasSavedSettings: Bool { FileManager.default.fileExists(atPath: url.path) }
 
     init(url: URL? = nil) {
         self.url = url ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

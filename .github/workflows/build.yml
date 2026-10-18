@@ -28,5 +28,5 @@ jobs:
         run: xcodebuild -project Vanille.xcodeproj -scheme Vanille -configuration Release -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
       - name: DSP and buffer safety checks
         run: ./Scripts/test.sh
-      - name: Standalone app bundle
-        run: ./Scripts/build.sh
+      - name: Local release candidate and extracted archive validation
+        run: ./Scripts/prepare-release.sh

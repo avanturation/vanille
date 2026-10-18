@@ -109,6 +109,7 @@ final class LiveVerification: NSObject {
     var initialDefault: AudioObjectID = 0
     var initialTapCount = 0
     var initialDeviceCount = 0
+    var configuredOutputCount = 0
     var timeout: DispatchWorkItem?
     init(state:AppState) {
         self.state = state; original = state.saved
@@ -164,7 +165,17 @@ final class LiveVerification: NSObject {
         for app in state.applications { test.applications[app.id] = AppVolume(bypass:app.id != fixtureID,name:app.name) }
         test.applications[fixtureID] = AppVolume(name:"Vanille Test Tone")
         test.processingPaused = false; test.eq = EQSettings()
-        test.selectedGroupID = nil; test.deviceSettings = [:]
+        // Exercise the user's actual route, including the restored wired + AirPlay
+        // clock. Do not silently replace it with an AirPlay-only aggregate.
+        if let i = test.outputGroups.firstIndex(where: { $0.id == test.selectedGroupID }) {
+            for j in test.outputGroups[i].devices.indices {
+                test.outputGroups[i].devices[j].volume = 1
+                test.outputGroups[i].devices[j].muted = false
+            }
+        }
+        test.deviceSettings = [:]
+        configuredOutputCount = state.deviceRoutes.filter { $0.enabled && state.outputDevice(for:$0.id) != nil }.count
+        append("Testing the current route (\(configuredOutputCount) configured output(s)).")
         state.applyVerificationState(test)
         append("Waiting for the processing callback. macOS may request System Audio Recording permission.")
         waitForEngine(attempt:0)
@@ -177,6 +188,11 @@ final class LiveVerification: NSObject {
                 do { try self.probe.start(); self.append("Processing and independent output readback started."); self.stage(0) }
                 catch { self.append("Readback failed: \(error.localizedDescription)"); self.finish() }
             } else if attempt < 55 {
+                if attempt == 4 {
+                    let fixture = self.state.applications.first { $0.id == self.fixtureID }
+                    let usesDefault = self.state.output.map { fixture?.outputDevices.contains($0.id) == true } ?? false
+                    self.append("Fixture uses current default: \(usesDefault). Engine status: \(self.state.metrics.error ?? self.state.statusText)")
+                }
                 if attempt % 5 == 4 { self.state.applyVerificationState(self.state.saved) }
                 self.waitForEngine(attempt:attempt+1)
             } else { self.append(self.state.metrics.error ?? "No callback received."); self.finish() }
@@ -289,7 +305,7 @@ final class LiveVerification: NSObject {
         for app in NSRunningApplication.runningApplications(withBundleIdentifier:secondID) { app.terminate() }
         state.applyVerificationState(original)
         let report: [String:Any] = ["date":ISO8601DateFormatter().string(from:Date()),"system":ProcessInfo.processInfo.operatingSystemVersionString,
-            "output":state.output?.name ?? "None","sampleRate":state.output?.sampleRate ?? 0,
+            "output":state.output?.name ?? "None","sampleRate":state.output?.sampleRate ?? 0,"configuredOutputCount":configuredOutputCount,
             "measurements":entries,"allPassed":entries.count == 17 && entries.allSatisfy { $0["passed"] as? Bool == true },
             "method":"Unmuted process tap independently reads Vanille HAL output. No audio samples are retained."]
         do { let data = try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]); try data.write(to:reportURL,options:.atomic)
@@ -315,6 +331,7 @@ final class RoutingVerification:NSObject {
     var initialDefault:AudioObjectID = 0, initialTapCount = 0, initialDeviceCount = 0
     var outputs:[OutputDevice] = []
     var timeout:DispatchWorkItem?
+    private var stoppedProbeCallbacks:[UInt64] = []
     let root = URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     init(state:AppState) { self.state = state; original = state.saved; super.init() }
     private func append(_ text:String) { log.textStorage?.append(NSAttributedString(string:text+"\n")); log.scrollToEndOfDocument(nil); NSLog("Vanille routing verification: %@",text) }
@@ -447,8 +464,15 @@ final class RoutingVerification:NSObject {
             else if index==2 { test.manualTimingForVerification = false }
             else { test.timingSound = false; test.processingPaused = true }
             state.applyVerificationState(test)
+            if index == 3 {
+                // A process tap can stop delivering callbacks when its source stops.
+                // Its last spectral value is then held, not a new audible signal.
+                DispatchQueue.main.asyncAfter(deadline:.now()+1) {
+                    self.stoppedProbeCallbacks = self.probes.map { $0.callbacks.load(ordering:.relaxed) }
+                }
+            }
         }
-        DispatchQueue.main.asyncAfter(deadline:.now()+(index==3 ? 5 : 9)) {
+        DispatchQueue.main.asyncAfter(deadline:.now()+9) {
             guard !self.finished else { return }
             let amplitudes = self.probes.map { $0.amplitude1000.load(ordering:.relaxed) }
             let a = self.probes[0].lastPulseEdge.load(ordering:.relaxed), b = self.probes[1].lastPulseEdge.load(ordering:.relaxed)
@@ -463,9 +487,22 @@ final class RoutingVerification:NSObject {
                 let offsets = LatencyAlignment.offsets(self.outputs.map(\.reportedLatencyMS)) ?? []
                 let expected = offsets.count == 2 ? (offsets[1]-offsets[0])/1000 : 99
                 pass = abs(delay-expected)<0.018 && amplitudes.allSatisfy { $0>0.0001 }
-            } else { pass = amplitudes.allSatisfy { $0<1e-8 } && !self.state.metrics.running }
+            } else {
+                let callbacks = self.probes.map { $0.callbacks.load(ordering:.relaxed) }
+                pass = self.stoppedProbeCallbacks.count == self.probes.count && !self.state.metrics.running
+                    && callbacks.indices.allSatisfy { i in
+                        callbacks[i] == self.stoppedProbeCallbacks[i] || amplitudes[i]<1e-8
+                    }
+            }
             let name = ["Built-in timing sound without application capture","Timing sound applies 400 ms per-device offset","Automatic device timing changes actual output without user delay settings","Timing sound stops safely"][index]
-            self.entries.append(["test":name,"passed":pass,"amplitudes":amplitudes,"relativeDelayMS":delay*1000,"capturedApplications":self.state.metrics.appIDs.count,"appliedOutputDelaysMS":self.state.metrics.outputDelayMS])
+            var entry:[String:Any] = ["test":name,"passed":pass,"amplitudes":amplitudes,"relativeDelayMS":delay*1000,"capturedApplications":self.state.metrics.appIDs.count,"appliedOutputDelaysMS":self.state.metrics.outputDelayMS]
+            if index == 3 {
+                entry["engineRunning"] = self.state.metrics.running
+                entry["probeCallbacksAfterSettling"] = self.stoppedProbeCallbacks
+                entry["probeCallbacksAtEnd"] = self.probes.map { $0.callbacks.load(ordering:.relaxed) }
+                entry["observation"] = "No callbacks after settling means the source stream stopped; spectral values are held. Continuing callbacks must report silence after two analysis windows."
+            }
+            self.entries.append(entry)
             self.append(String(format:"%@ %@ · relative delay %.1f ms",pass ? "PASS" : "FAIL",name,delay*1000))
             self.timingSoundStage(index+1)
         }

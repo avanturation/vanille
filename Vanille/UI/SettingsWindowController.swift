@@ -11,6 +11,7 @@ final class SettingsWindowController: NSWindowController {
     private var profiles: ActionPopUp!
     private var selectedProfile: String?
     private let profileDetails = UI.text("",size:12,color:.secondaryLabelColor)
+    private let diagnostics = UI.text("",size:12,color:.secondaryLabelColor)
 
     init(state:AppState) {
         self.state = state
@@ -78,6 +79,27 @@ final class SettingsWindowController: NSWindowController {
             field.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         }
         tab("Profiles",body:profileBody,in:tabs)
+
+        let diagnosticBody = UI.vertical(spacing:14)
+        diagnosticBody.addArrangedSubview(UI.text("Audio Diagnostics",size:13,weight:.semibold))
+        diagnostics.maximumNumberOfLines = 12; diagnostics.lineBreakMode = .byWordWrapping
+        diagnostics.preferredMaxLayoutWidth = 426
+        diagnosticBody.addArrangedSubview(diagnostics)
+        diagnosticBody.addArrangedSubview(UI.horizontal([
+            ActionButton("Refresh") { [weak self] in self?.state.refresh() },
+            ActionButton("Copy Diagnostics") { [weak self] in
+                guard let self else { return }
+                NSPasteboard.general.clearContents(); NSPasteboard.general.setString(self.diagnostics.stringValue,forType:.string)
+            }
+        ]))
+        let diagnosticNote = UI.text("No audio is saved. Review device names before sharing diagnostics. AirPlay connections are managed by macOS Sound.",size:12,color:.secondaryLabelColor)
+        diagnosticNote.maximumNumberOfLines = 3; diagnosticNote.lineBreakMode = .byWordWrapping
+        diagnosticNote.preferredMaxLayoutWidth = 426
+        diagnosticBody.addArrangedSubview(diagnosticNote)
+        diagnosticBody.addArrangedSubview(ActionButton("Project & Support…") {
+            NSWorkspace.shared.open(URL(string:"https://github.com/avanturation/vanille")!)
+        })
+        diagnosticBody.addArrangedSubview(NSView()); tab("Diagnostics",body:diagnosticBody,in:tabs)
     }
     private func tab(_ name:String,body:NSStackView,in tabs:NSTabView) {
         let view = NSView(); UI.pin(body,to:view,inset:18)
@@ -88,6 +110,10 @@ final class SettingsWindowController: NSWindowController {
         login.state = state.launchAtLogin ? .on : .off
         pause.state = state.saved.processingPaused ? .on : .off
         message.stringValue = state.notice ?? state.statusText
+        let version = Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "Development"
+        let output = state.output.map { "\($0.name) · \($0.channels) channels · \(Int($0.sampleRate)) Hz" } ?? "Unavailable"
+        let latency = state.output?.reportedLatencyMS.map { String(format:"%.2f ms (reported by macOS)",$0) } ?? "Unavailable"
+        diagnostics.stringValue = "Vanille \(version)\n\(ProcessInfo.processInfo.operatingSystemVersionString)\nOutput: \(output)\nOutput latency: \(latency)\nActive group: \(state.selectedGroup?.name ?? "Single Output")\nProcessed outputs: \(state.metrics.outputUIDs.count)\nProcessed apps: \(state.metrics.appIDs.count)\nAudio callbacks: \(state.metrics.callbacks)\n\(state.statusText)"
         let entries = state.saved.applications.filter { id,_ in
             if id.hasPrefix("com.avanturation.Vanille.") && id != "com.avanturation.Vanille.OtherSystemAudio" { return false }
             if let range = id.range(of:".helper",options:.caseInsensitive), state.saved.applications[String(id[..<range.lowerBound])] != nil { return false }

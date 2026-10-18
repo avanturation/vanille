@@ -154,14 +154,14 @@ let temp = FileManager.default.temporaryDirectory.appendingPathComponent("Vanill
 let store = StateStore(url:temp)
 var saved = SavedState(); saved.applications["test.bundle"] = AppVolume(volume:0.42,muted:true,bypass:true,name:"Test")
 saved.eq = boost; saved.profiles[0].outputUID = "stable-device-uid"
-saved.outputGroups[0].devices = outputRoutes; saved.selectedGroupID = saved.outputGroups[0].id
+saved.outputGroups = [OutputGroup(name:"Desk",devices:outputRoutes)]; saved.selectedGroupID = saved.outputGroups[0].id
 store.save(saved,immediately:true)
 let restored = StateStore(url:temp).load()
 check(restored.applications["test.bundle"] == saved.applications["test.bundle"] && restored.eq == saved.eq && restored.profiles[0].outputUID == "stable-device-uid","Persistent settings round-trip by Bundle ID and Device UID")
 check(restored.outputGroups == saved.outputGroups && restored.selectedGroupID == saved.selectedGroupID,"Output groups retain independent volume, mute and millisecond offsets")
 let oldData = try! JSONSerialization.data(withJSONObject:["schema":1,"processingPaused":true])
 let migrated = try! JSONDecoder().decode(SavedState.self,from:oldData)
-check(migrated.outputGroups.count == 4 && migrated.processingPaused,"Existing settings migrate safely to editable output groups")
+check(migrated.outputGroups.isEmpty && migrated.processingPaused,"Settings without groups use real output discovery instead of assumed speaker models")
 var transient = saved; transient.timingSound = true; transient.processingPaused = false; transient.manualTimingForVerification = true
 store.save(transient,immediately:true)
 let safeRestart = StateStore(url:temp).load()
