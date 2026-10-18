@@ -68,3 +68,47 @@ struct HardwareClockTracker {
         return ((sample-firstSample!)/sampleRate-(Double(host)-Double(firstHost))/hostFrequency)*1000
     }
 }
+
+enum SourceToPlaybackLatency {
+    /// Maps the captured frame's actual input host time to the AirPlay clock's host time.
+    /// This reports downstream latency to the source player; it adds no audio delay.
+    static func seconds(sourceFrame:Int64,sourceHost:UInt64,playbackFrame:Double,playbackHost:UInt64,sampleRate:Double,hostFrequency:Double)->Double? {
+        guard sourceFrame>=0,sourceHost>0,playbackHost>=sourceHost,playbackFrame.isFinite,playbackFrame>=0,
+              sampleRate.isFinite,sampleRate>0,hostFrequency.isFinite,hostFrequency>0 else { return nil }
+        let age=(Double(playbackHost)-Double(sourceHost))/hostFrequency
+        guard age<=0.25 else { return nil }
+        let latency=(Double(sourceFrame)-playbackFrame)/sampleRate+age
+        return latency.isFinite && latency>=0 && latency<=10 ? latency : nil
+    }
+}
+
+/// Control-queue only. Rejects startup, stale clocks, discontinuities and unstable buffers.
+/// The hysteresis/cooldown prevents repeated Core Audio reconfiguration for buffer-sized jitter.
+struct LatencyDeclarationFilter {
+    private var points=[(time:Double,value:Double)]()
+    private var lastSample = -Double.infinity
+    private var lastChange = -Double.infinity
+    private(set) var medianSeconds:Double?
+    private(set) var status="Waiting for playback"
+    mutating func observe(seconds:Double?,hostSeconds:Double,declaredSeconds:Double)->Double? {
+        guard let seconds,seconds.isFinite,seconds>=0.1,seconds<=10,hostSeconds.isFinite,declaredSeconds.isFinite else {
+            points.removeAll(keepingCapacity:true);lastSample = -Double.infinity;medianSeconds=nil;status="Waiting for a valid clock";return nil
+        }
+        if hostSeconds<lastSample || hostSeconds-lastSample>0.75 || points.last.map({ abs($0.value-seconds)>0.35 }) == true {
+            points.removeAll(keepingCapacity:true)
+        }
+        guard hostSeconds-lastSample>=0.25 || hostSeconds<lastSample else { return nil }
+        lastSample=hostSeconds;points.append((hostSeconds,seconds))
+        if points.count>49 { points.removeFirst(points.count-49) }
+        guard let first=points.first,hostSeconds-first.time>=8 else { status="Measuring stable playback";return nil }
+        let values=points.map(\.value).sorted(),median=values[values.count/2]
+        let deviations=values.map { abs($0-median) }.sorted()
+        guard values.last!-values.first!<=0.10,deviations[deviations.count/2]<=0.025 else { status="Playback buffer is changing";return nil }
+        medianSeconds=median
+        let rounded=(median*100).rounded()/100
+        guard abs(rounded-declaredSeconds)>=0.04 else { status="Latency declaration matches playback";return nil }
+        guard hostSeconds-lastChange>=15 else { status="Waiting for timing to settle";return nil }
+        lastChange=hostSeconds;status="Updating source-player latency"
+        return rounded
+    }
+}

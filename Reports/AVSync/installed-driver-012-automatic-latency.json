@@ -1,0 +1,147 @@
+{
+  "date" : "2026-10-18T10:19:29Z",
+  "defaultOutput" : "Vanille Video Output",
+  "error" : "",
+  "listenerResultForThisAutomaticRun" : "Not yet requested",
+  "live" : {
+    "alignmentActivations" : 1,
+    "automaticLatencyEnabled" : true,
+    "automaticLatencyStatus" : "Latency declaration matches playback",
+    "blockingReloadRequests" : 135,
+    "bufferedSeconds" : 3.3985188957850139,
+    "captureCallbacks" : 12457,
+    "capturedApplications" : [
+      "Google Chrome"
+    ],
+    "capturedInputPeak" : 0,
+    "cleanup" : {
+
+    },
+    "encodedFrames" : 6377472,
+    "encoderQueueMS" : 10.666666666666666,
+    "error" : "",
+    "failureContext" : {
+
+    },
+    "fullSegmentRequests" : 136,
+    "httpBytes" : 2050875,
+    "httpRequests" : 276,
+    "initializationBytes" : 612,
+    "ioTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputAgeAtCallbackMS" : 10.695708333333332,
+      "inputFlags" : 7,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3099251.7904002499,
+      "outputMinusCallbackMS" : 10.637625,
+      "outputMinusCycleMS" : 10.661583333333335,
+      "outputSampleTime" : 6380232,
+      "rateScalar" : 1,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 6376960
+    },
+    "lastEndPTS" : 132.79999999999998,
+    "localFrameErrorMS" : -0.0072074779309332371,
+    "localOutputRMS" : 0,
+    "maximumPartDuration" : 0.32000000000000001,
+    "measuredSourceToPlaybackMS" : 3395.053895785014,
+    "memoryOnly" : true,
+    "mr4Enabled" : true,
+    "originalReplaced" : true,
+    "outputCallbacks" : 12459,
+    "outputIOTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputFlags" : 0,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3099251.8040638752,
+      "outputMinusCallbackMS" : 11.675625,
+      "outputMinusCycleMS" : 11.714458333333333,
+      "outputSampleTime" : 6397856,
+      "rateScalar" : 0.9999973927177267,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 6377984
+    },
+    "partialSegmentManifest" : true,
+    "partialSegmentRequests" : 3,
+    "playbackClockReady" : true,
+    "playbackFrame" : 6214855.0930023193,
+    "playbackRecoveryAttempts" : 1,
+    "retainedEncodedBytes" : 19092,
+    "segmentCount" : 60,
+    "sourceFrames" : 6377984,
+    "stableSourceToPlaybackMS" : 3395.0486507110595,
+    "totalSegments" : 415
+  },
+  "recommendedLiveOffset" : 3,
+  "scope" : "Actual Google Chrome audio through installed 0.1.2 driver, private tap-only capture, direct MR4 render and native AirPlay. Automatic latency changed from 4000 to 3400 ms after validating the HAL-reported aggregate latency. Software clock agreement is not an acoustic A\/V measurement.",
+  "softwareAutomaticLatencyVerified" : true,
+  "stalls" : 0,
+  "startupTime" : 0.015974044799804688,
+  "timeControlStatus" : 2,
+  "virtualOutput" : {
+    "activationWaitMS" : 0.1430511474609375,
+    "aggregateExists" : true,
+    "automaticLatencyUpdates" : 1,
+    "canBeDefault" : 1,
+    "cleanup" : {
+
+    },
+    "declaredFrames" : 163200,
+    "declaredMS" : 3400,
+    "externalVideoSyncVerified" : false,
+    "hidden" : 0,
+    "isSystemDefault" : true,
+    "latencyConfigurationStatus" : 0,
+    "timingIsMain" : true
+  },
+  "virtualOutputEvents" : [
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 220,
+      "stage" : "Creating private capture tap"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 220,
+      "stage" : "Creating private capture aggregate"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 220,
+      "stage" : "Registering capture callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 220,
+      "stage" : "Starting independent output callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 220,
+      "stage" : "Starting capture callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 220,
+      "stage" : "Capture and output callbacks started"
+    }
+  ]
+}

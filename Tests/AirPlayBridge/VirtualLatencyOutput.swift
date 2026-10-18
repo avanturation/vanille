@@ -54,6 +54,7 @@ enum VirtualLatencyOutput {
         return dictionary
     }
 
+
     /// Read-only with respect to global routing and physical-device properties.
     /// Tests whether real device latency survives aggregation, unlike the earlier safety-offset probe.
     static func probe(physical: OutputDevice) -> [String: Any] {
@@ -123,11 +124,41 @@ final class LatencyDeclaredRoute {
     private var previousLatency: UInt32 = 0
     private var previousDefault: AudioObjectID = 0
     private(set) var cleanup = [String: Int32]()
-    private(set) var declaredFrames: UInt32 = 0
+    private let declaredFrameStorage=Atomic<UInt32>(0)
+    var declaredFrames:UInt32 { declaredFrameStorage.load(ordering:.acquiring) }
+    private let configurationQueue=DispatchQueue(label:"Vanille.VideoOutput.Configuration",qos:.userInitiated)
+    private let configurationLock=NSLock()
+    private let retiring=Atomic<Bool>(false)
+    private let configurationError=Atomic<Int32>(0)
+    private let configurationChanges=Atomic<UInt64>(0)
+    var configurationStatus:Int32 { configurationError.load(ordering:.acquiring) }
     private(set) var mainTiming = false
     private var canBeDefault:UInt32=0
     private var hidden:UInt32=0
     private var activationWaitMS=0.0
+
+    static func recoverStale(physical:OutputDevice) throws -> [String:Any] {
+        guard DeviceManager().defaultOutput()==physical.id else { throw AudioFailure(operation:"Select the physical output before recovering an old experiment",status:-1) }
+        let existing=try HAL.objects(HAL.system,kAudioHardwarePropertyDevices).filter { (try? HAL.string($0,kAudioDevicePropertyDeviceUID))==uid }
+        var rows=[[String:Any]]()
+        for object in existing {
+            let composition=VirtualLatencyOutput.actualComposition(object)
+            let members=composition[kAudioAggregateDeviceSubDeviceListKey] as? [[String:Any]] ?? []
+            let memberUIDs=Set(members.compactMap { $0[kAudioSubDeviceUIDKey] as? String })
+            guard memberUIDs==Set([physical.uid,VirtualLatencyOutput.timingUID]),
+                  try HAL.read(object,kAudioDevicePropertyDeviceIsRunningSomewhere,default:UInt32(1))==0 else {
+                throw AudioFailure(operation:"The old experimental output is active or has an unexpected composition",status:-1)
+            }
+            let tapUIDs=Set((try? HAL.strings(object,kAudioAggregateDevicePropertyTapList)) ?? [])
+            let publicTaps=(try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []
+            let ownedTaps=publicTaps.filter { tapUIDs.contains((try? HAL.string($0,kAudioTapPropertyUID)) ?? "") }
+            let status=AudioHardwareDestroyAggregateDevice(object)
+            try HAL.check(status,"Remove inactive Vanille experimental output")
+            rows.append(["destroyAggregate":status,"tapCleanup":ownedTaps.map { AudioHardwareDestroyProcessTap($0) }])
+        }
+        if !existing.isEmpty { try VirtualLatencyOutput.configure(VirtualLatencyOutput.timingDevice(),frames:0) }
+        return ["recovered":rows,"defaultPreserved":DeviceManager().defaultOutput()==physical.id]
+    }
 
     init(physical: OutputDevice, frames: UInt32, mainTiming: Bool) throws {
         self.physical = physical; self.mainTiming = mainTiming
@@ -158,7 +189,7 @@ final class LatencyDeclaredRoute {
             guard latency >= frames, latency <= frames + 4_800 else {
                 throw AudioFailure(operation: "The aggregate did not expose the real downstream latency; original output retained", status: -1)
             }
-            declaredFrames = frames
+            declaredFrameStorage.store(frames,ordering:.releasing)
         } catch { restore(); throw error }
     }
 
@@ -180,7 +211,33 @@ final class LatencyDeclaredRoute {
         throw AudioFailure(operation: "The audio server did not select the experimental output", status: -1)
     }
 
+    func requestLatency(seconds:Double) {
+        guard seconds.isFinite,seconds>=0.1,seconds<=10,!retiring.load(ordering:.acquiring) else { return }
+        let frames=UInt32((seconds*48_000).rounded())
+        configurationQueue.async { [weak self] in
+            guard let self else { return }
+            self.configurationLock.lock();defer { self.configurationLock.unlock() }
+            guard !self.retiring.load(ordering:.acquiring),self.object != 0,self.timing != 0 else { return }
+            do {
+                try VirtualLatencyOutput.configure(self.timing,frames:frames)
+                let deadline=Date().addingTimeInterval(2)
+                repeat {
+                    let actual=try HAL.read(self.object,kAudioDevicePropertyLatency,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput)
+                    if actual>=frames && actual<=frames+480 {
+                        self.declaredFrameStorage.store(frames,ordering:.releasing)
+                        self.configurationChanges.wrappingAdd(1,ordering:.relaxed)
+                        return
+                    }
+                    Thread.sleep(forTimeInterval:0.02)
+                } while Date()<deadline
+                throw AudioFailure(operation:"Aggregate latency did not converge",status:kAudioHardwareNotReadyError)
+            } catch { self.configurationError.store((error as? AudioFailure)?.status ?? -1,ordering:.releasing) }
+        }
+    }
+
     func restore() {
+        retiring.store(true,ordering:.releasing)
+        configurationLock.lock();defer { configurationLock.unlock() }
         guard object != 0 || timing != 0 else { return }
         if object != 0, DeviceManager().defaultOutput() == object {
             do {
@@ -205,11 +262,27 @@ final class LatencyDeclaredRoute {
             catch { cleanup["restoreLatency"] = (error as? AudioFailure)?.status ?? -1 }
         }
     }
+    func restoreSelection() {
+        retiring.store(true,ordering:.releasing)
+        configurationLock.lock();defer { configurationLock.unlock() }
+        guard object != 0,DeviceManager().defaultOutput()==object,
+              (try? HAL.read(physical.id,kAudioDevicePropertyDeviceIsAlive,default:UInt32(0)))==1 else { return }
+        do {
+            try HAL.write(HAL.system,kAudioHardwarePropertyDefaultOutputDevice,value:physical.id)
+            let deadline=Date().addingTimeInterval(2)
+            while DeviceManager().defaultOutput()==object,Date()<deadline { Thread.sleep(forTimeInterval:0.02) }
+            cleanup["restoreSelection"]=DeviceManager().defaultOutput()==object ? -1 : noErr
+        } catch { cleanup["restoreSelection"]=(error as? AudioFailure)?.status ?? -1 }
+    }
     var snapshot: [String: Any] {
-        ["aggregateExists": object != 0, "isSystemDefault": object != 0 && DeviceManager().defaultOutput() == object,
+        var result:[String:Any] = ["aggregateExists": object != 0, "isSystemDefault": object != 0 && DeviceManager().defaultOutput() == object,
          "declaredFrames": declaredFrames, "declaredMS": Double(declaredFrames) / 48,
          "canBeDefault":canBeDefault,"hidden":hidden,"activationWaitMS":activationWaitMS,
+         "automaticLatencyUpdates":configurationChanges.load(ordering:.relaxed),"latencyConfigurationStatus":configurationStatus,
          "timingIsMain": mainTiming, "cleanup": cleanup, "externalVideoSyncVerified": false]
+        if object != 0 { result["halAggregateLatencyFrames"]=try? HAL.read(object,kAudioDevicePropertyLatency,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput) }
+        if timing != 0 { result["halDriverLatencyFrames"]=try? HAL.read(timing,kAudioDevicePropertyLatency,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput) }
+        return result
     }
     deinit { restore() }
 }

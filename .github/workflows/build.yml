@@ -34,6 +34,8 @@ jobs:
         run: ./Scripts/test-airplay-bridge.sh
       - name: A/V clock analysis checks
         run: ./Scripts/test-avsync.sh
+      - name: Independent capture and render checks
+        run: zsh Scripts/test-bridge-render.sh
       - name: Experimental native AirPlay bridge
         run: ./Scripts/build-airplay-bridge-lab.sh
       - name: Isolated AudioServerPlugIn ABI and clock checks

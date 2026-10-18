@@ -3,13 +3,15 @@ import CoreAudio
 import Darwin
 
 final class ProcessAudioManager {
-    func applications() throws -> [AudioApplication] {
+    func applications(includeInactive:Bool=false) throws -> [AudioApplication] {
         let ownPID = ProcessInfo.processInfo.processIdentifier
         let runningApps = NSWorkspace.shared.runningApplications
+        let regularBundles=Set(runningApps.filter { $0.activationPolicy == .regular }.compactMap(\.bundleIdentifier))
         var groups: [String: AudioApplication] = [:]
         for id in try HAL.objects(HAL.system, kAudioHardwarePropertyProcessObjectList) {
-            guard let pid = try? HAL.read(id, kAudioProcessPropertyPID, default: pid_t(0)), pid != ownPID,
-                  (try? HAL.read(id, kAudioProcessPropertyIsRunningOutput, default: UInt32(0))) == 1 else { continue }
+            guard let pid = try? HAL.read(id, kAudioProcessPropertyPID, default: pid_t(0)), pid != ownPID else { continue }
+            let runningOutput=(try? HAL.read(id,kAudioProcessPropertyIsRunningOutput,default:UInt32(0)))==1
+            guard includeInactive || runningOutput else { continue }
             let rawBundleID = (try? HAL.string(id, kAudioProcessPropertyBundleID)) ?? ""
             var running = NSRunningApplication(processIdentifier: pid)
             if rawBundleID.hasPrefix("com.apple.WebKit."), let serviceName = running?.localizedName,
@@ -48,6 +50,7 @@ final class ProcessAudioManager {
             // Command-line players and short system sounds can have no bundle. Give them one
             // explicit logical group instead of silently excluding them from system routing.
             let bundleID = identified.isEmpty ? "com.avanturation.Vanille.OtherSystemAudio" : identified
+            guard runningOutput || regularBundles.contains(bundleID) else { continue }
             let name = (bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
                 ?? (bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String)
                 ?? running?.localizedName ?? (identified.isEmpty ? "Other System Audio" : bundleID)

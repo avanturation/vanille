@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-18T10:51:46Z",
+  "scope": "Native software clocks and output state; not acoustic A/V acceptance",
+  "overallVideoAcceptance": false,
+  "priorUserControlsResult": "Long wait, sync changes and some speaker dropouts",
+  "quietSourceLifecycle": {
+    "sourceExited": true,
+    "connectionRetained": true,
+    "newBundleAssignedWithoutRouteRebuild": true,
+    "pauseCommands": 2,
+    "timelineResets": 2,
+    "physicalOutputNonzero": true
+  },
+  "phases": [
+    {
+      "phase": "Safari pause",
+      "date": "2026-10-18T10:51:46Z",
+      "error": "",
+      "transport": 0,
+      "source": {
+        "captureCallbacks": 21163,
+        "localOutputRMS": 0,
+        "originalReplaced": true,
+        "outputCallbacks": 21175,
+        "playbackClockReady": false,
+        "sourceActiveProcesses": 0,
+        "sourceFrames": 10835456,
+        "sourcePauseCommands": 3,
+        "sourcePaused": true,
+        "sourceTimelineResets": 2,
+        "sourceTimelineSeeking": false
+      },
+      "virtualOutput": {
+        "aggregateExists": true,
+        "declaredMS": 4730,
+        "halAggregateLatencyFrames": 227040,
+        "halDriverLatencyFrames": 227040,
+        "isSystemDefault": true,
+        "latencyConfigurationStatus": 0
+      }
+    },
+    {
+      "phase": "Safari resume",
+      "date": "2026-10-18T10:52:12Z",
+      "error": "",
+      "transport": 2,
+      "source": {
+        "captureCallbacks": 23601,
+        "localOutputRMS": 0.0011958571754737538,
+        "measuredSourceToPlaybackMS": 4815.786726776123,
+        "originalReplaced": true,
+        "outputCallbacks": 23613,
+        "playbackClockReady": true,
+        "sourceActiveProcesses": 1,
+        "sourceFrames": 12083712,
+        "sourcePauseCommands": 3,
+        "sourcePaused": false,
+        "sourceTimelineResets": 3,
+        "sourceTimelineSeeking": false,
+        "stableSourceToPlaybackMS": 4815.775971082052
+      },
+      "virtualOutput": {
+        "aggregateExists": true,
+        "automaticLatencyUpdates": 4,
+        "declaredMS": 4820,
+        "halAggregateLatencyFrames": 231360,
+        "halDriverLatencyFrames": 231360,
+        "isSystemDefault": true,
+        "latencyConfigurationStatus": 0
+      }
+    },
+    {
+      "phase": "Safari seek forward (actual seek slider and Right key)",
+      "date": "2026-10-18T10:52:51Z",
+      "error": "",
+      "transport": 2,
+      "source": {
+        "captureCallbacks": 27256,
+        "localOutputRMS": 0.000650098055187417,
+        "measuredSourceToPlaybackMS": 4815.7560512466425,
+        "originalReplaced": true,
+        "outputCallbacks": 27269,
+        "playbackClockReady": true,
+        "sourceActiveProcesses": 1,
+        "sourceFrames": 13955072,
+        "sourcePauseCommands": 3,
+        "sourcePaused": false,
+        "sourceTimelineResets": 3,
+        "sourceTimelineSeeking": false,
+        "stableSourceToPlaybackMS": 4815.771615229289
+      },
+      "virtualOutput": {
+        "aggregateExists": true,
+        "automaticLatencyUpdates": 4,
+        "declaredMS": 4820,
+        "halAggregateLatencyFrames": 231360,
+        "halDriverLatencyFrames": 231360,
+        "isSystemDefault": true,
+        "latencyConfigurationStatus": 0
+      }
+    }
+  ],
+  "latestListenerResult": {
+    "allThreeOutputsAndVideoGenerallyMatchBeforeAndAfterControls": true,
+    "pausePlaySeekResponseStillTooSlow": true,
+    "userQuote": "1번인데 조작 전후간 딜레이? 가 너무 김 (싱크는 맞음)",
+    "precision": "Qualitative listener result; no acoustic timing measurement"
+  }
+}

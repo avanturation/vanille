@@ -1,0 +1,5 @@
+{
+  "date": "2026-10-18T11:04:53Z",
+  "scope": "Native memory AAC/HLS checks, not speaker A/V acceptance",
+  "report": "PASS Real AAC writer produces in-memory initialization and live parts\nPASS Encoded part duration fits the advertised 350 ms target\nPASS Live encoded retention remains bounded after 24 seconds\nPASS Manifest advertises the implemented partial-segment controls\nPASS Every full segment obeys the one-second HLS target duration\nPASS Full segment consists of the exact three advertised fMP4 parts\nPASS Preload and blocking reload wait for an unpublished part\nPASS Invalid and overflowing media requests fail safely\n8/8 live segment checks passed"
+}

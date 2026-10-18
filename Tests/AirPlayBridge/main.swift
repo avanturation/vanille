@@ -47,7 +47,10 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     private var virtualProbeRunning=false
     private var virtualAttempt=UUID()
     private var virtualPreparing=false
+    private var virtualStage=""
+    private var virtualEvents=[[String:Any]]()
     private var virtualRequest:VirtualRouteRequest?
+    private var stoppingLive=false
     var sourcePlayerProbe:LatencyAwarePlayerProbe?
     let syncWAVLock=NSLock()
     let controlledVideo=ControlledVideo()
@@ -76,6 +79,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let playback=NSMenuItem(title:"Playback",action:nil,keyEquivalent:"");let playbackMenu=NSMenu()
         let pause=NSMenuItem(title:"Pause Player",action:#selector(pausePlayer),keyEquivalent:"p");pause.target=self;playbackMenu.addItem(pause)
         let resume=NSMenuItem(title:"Resume Player",action:#selector(resumePlayer),keyEquivalent:"r");resume.target=self;playbackMenu.addItem(resume)
+        let sync=NSMenuItem(title:"Resynchronize Speakers",action:#selector(syncCurrentAudio),keyEquivalent:"s");sync.target=self;playbackMenu.addItem(sync)
         playback.submenu=playbackMenu;menu.addItem(playback)
         let checks=NSMenuItem(title:"Native Stream Checks",action:#selector(runStreamChecks),keyEquivalent:"t");checks.target=self;playbackMenu.addItem(checks)
         let before=NSMenuItem(title:"Before Video Compensation",action:#selector(beforeVideo),keyEquivalent:"b");before.target=self;playbackMenu.addItem(before)
@@ -84,13 +88,14 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let sourceProbe=NSMenuItem(title:"Source Player Latency Declaration",action:#selector(probeSourcePlayer),keyEquivalent:"Y");sourceProbe.target=self;playbackMenu.addItem(sourceProbe)
         let virtualProbe=NSMenuItem(title:"Virtual Output Latency Probe",action:#selector(probeVirtualOutput),keyEquivalent:"L");virtualProbe.target=self;playbackMenu.addItem(virtualProbe)
         let videoRouting=NSMenuItem(title:"Start Experimental Video Routing",action:#selector(startVirtualVideo),keyEquivalent:"v");videoRouting.target=self;playbackMenu.addItem(videoRouting)
+        let restoreVideo=NSMenuItem(title:"Restore Inactive Experimental Output",action:#selector(restoreExperimentalOutput),keyEquivalent:"D");restoreVideo.target=self;playbackMenu.addItem(restoreVideo)
         let virtualSource=NSMenuItem(title:"Virtual Output Source Player Probe",action:#selector(probeVirtualSourcePlayer),keyEquivalent:"V");virtualSource.target=self;playbackMenu.addItem(virtualSource)
         let root = NSStackView(); root.orientation = .vertical; root.alignment = .leading; root.spacing = 12
-        let intro = NSTextField(wrappingLabelWithString:"Music Mode routes sound to the selected speakers. Video Mode preserves external players’ original audio. The comparison measures only the supplied test clip.")
+        let intro = NSTextField(wrappingLabelWithString:"Choose your AirPlay speakers, then start Music Mode or Video Mode. Stop restores your original output.")
         intro.font = .systemFont(ofSize:12)
         let picker = AVRoutePickerView(); picker.player = player; picker.setAccessibilityLabel("AirPlay destinations for experimental player")
-        liveSystemButton.target=self;liveSystemButton.action=#selector(liveSystem);liveSystemButton.bezelStyle = .rounded
-        let row = NSStackView(views:[picker,button("Play Quiet Pulse",#selector(play)),button("Live Pulse",#selector(livePulse)),liveSystemButton,button("Use MR4 for Video",#selector(stop))]); row.spacing = 8
+        liveSystemButton.title="Start";liveSystemButton.target=self;liveSystemButton.action=#selector(startSelectedMode);liveSystemButton.bezelStyle = .rounded
+        let row = NSStackView(views:[picker,liveSystemButton,button("Stop",#selector(stop))]); row.spacing = 8
         replaceButton.target=self;replaceButton.action=#selector(replaceOriginal)
         localVolume.target=self;localVolume.action=#selector(volumeChanged);localVolume.setAccessibilityLabel("MR4 experimental volume")
         let localRow=NSStackView(views:[replaceButton,NSTextField(labelWithString:"MR4"),localVolume]);localRow.spacing=10
@@ -102,7 +107,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         runButton.target=self;runButton.action=#selector(runComparison);runButton.bezelStyle = .rounded;runButton.isEnabled=false
         let comparison=NSStackView(views:[mode,cases,runButton]);comparison.spacing=8
         scope.font = .systemFont(ofSize:11);scope.textColor = .secondaryLabelColor
-        scope.stringValue="External video: synchronization unsupported in multi-speaker mode. The comparison uses an owned test clip; no video capture. Preparing clip…"
+        scope.stringValue="Choose your speakers and playback mode. The optional comparison uses a generated test clip."
         videoHolder.wantsLayer=true;videoHolder.layer=controlledVideo.layer;videoHolder.isHidden=true
         status.font = .systemFont(ofSize:12)
         details.isEditable = false; details.font = .monospacedSystemFont(ofSize:11,weight:.regular); details.autoresizingMask = [.width]; details.frame = NSRect(x:0,y:0,width:730,height:350)
@@ -130,7 +135,6 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
                     self.syncWAVLock.lock();self.syncWAV=audio;self.syncWAVLock.unlock();self.controlledVideo.loadOwnedFixture(file)
                     self.runButton.isEnabled=true
                     self.fixtureStatus="Ready: generated silent 34-second cue movie"
-                    self.scope.stringValue="Video Mode corrects this owned timing clip only. External Safari/Chrome/DRM video keeps its original path; synchronized multi-speaker video is unsupported."
                 }
             } catch { DispatchQueue.main.async { self.fixtureStatus="Failed: \(error.localizedDescription)";self.scope.stringValue="Controlled video unavailable: \(error.localizedDescription)" } }
         }
@@ -169,6 +173,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     private func startLive(tone:Bool,syncTone:Bool=false) {
         stop();liveError=""
         player.audioOutputDeviceUniqueID=nil
+        player.automaticallyWaitsToMinimizeStalling=true
         do {
             guard let device=try manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { throw AudioFailure(operation:"Set the system output to MR4 first",status:-1) }
             let settings=StateStore().load()
@@ -183,7 +188,16 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         refresh()
     }
     private func stopLive() {
-        if let live { live.stop();lastLive=live.snapshot };live=nil;replaceButton.state = .off
+        guard !stoppingLive else { return };stoppingLive=true;defer { stoppingLive=false }
+        live?.onFailure=nil
+        if let live { lastLive=live.snapshot;live.releaseOriginal() }
+        virtualRoute?.restoreSelection()
+        if let live {
+            live.stop();let stopped=live.snapshot
+            lastLive["cleanup"]=stopped["cleanup"];lastLive["failureContext"]=stopped["failureContext"]
+            lastLive["mr4Enabled"]=false;lastLive["originalReplaced"]=false;lastLive["stopped"]=true
+        }
+        live=nil;replaceButton.state = .off
         if let virtualRoute { virtualRoute.restore();lastVirtualRoute=virtualRoute.snapshot };virtualRoute=nil
     }
     @objc func stop() {
@@ -194,8 +208,9 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     }
     @objc func modeChanged() {
         stop();videoHolder.isHidden=mode.selectedSegment==0
-        scope.stringValue=mode.selectedSegment==0 ? "Music Mode: existing multi-speaker gain/EQ path." : "Video Mode: external apps use original sound. Multi-speaker A/V sync is available for the controlled test only, pending verification."
+        scope.stringValue=mode.selectedSegment==0 ? "Music Mode: selected speakers, with your current volume and EQ settings." : "Video Mode: synchronizes external video using the installed Vanille timing output. AirPlay needs a short playback buffer."
     }
+    @objc func startSelectedMode() { guard live == nil,!virtualPreparing else { return };if mode.selectedSegment==1 { startVirtualVideo() } else { liveSystem() } }
     @objc func beforeVideo() { controlledVideo.setCompensated(false) }
     @objc func afterVideo() { controlledVideo.setCompensated(true) }
     @objc func probeLatency() {
@@ -237,7 +252,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         refresh()
     }
     @objc func startVirtualVideo() {
-        guard !virtualProbeRunning,!virtualPreparing else { return }
+        guard !virtualProbeRunning,!virtualPreparing,live == nil,virtualRoute == nil else { return }
         // The route constructor validates real host latency before changing the default.
         let rows=virtualLatencyProbe["cases"] as? [[String:Any]] ?? []
         let verified=rows.first(where: {
@@ -245,36 +260,74 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
                 ($0["isPrivate"] as? Bool)==false && ($0["requestedStacked"] as? Int)==1 && $0["error"] == nil
         })
         let useTiming=verified?["timingIsMain"] as? Bool ?? true
-        stop();liveError="";virtualPreparing=true
+        stop();liveError="";virtualPreparing=true;virtualStage="Preparing output";virtualEvents=[]
         let attempt=UUID();virtualAttempt=attempt
         let request=VirtualRouteRequest();virtualRequest=request
         do {
+            guard !NSWorkspace.shared.runningApplications.contains(where: { $0.bundleIdentifier=="com.avanturation.Vanille" }) else {
+                throw AudioFailure(operation:"Quit the other Vanille instance before running the isolated video experiment",status:-1)
+            }
             guard let device=try manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { throw AudioFailure(operation:"Restore MR4 before testing video output",status:-1) }
             let settings=StateStore().load()
-            let apps=try ProcessAudioManager().applications().filter {
-                !$0.id.hasPrefix("com.avanturation.Vanille") && !(settings.applications[$0.id]?.bypass ?? false) && ($0.outputDevices.isEmpty || $0.outputDevices.contains(device.id))
-            }
-            guard !apps.isEmpty else { throw AudioFailure(operation:"Play the Safari test video before starting this experiment",status:-1) }
             player.audioOutputDeviceUniqueID=nil
+            player.automaticallyWaitsToMinimizeStalling=false
             DispatchQueue.global(qos:.userInitiated).async { [self] in
                 do {
+                    let deadline=Date().addingTimeInterval(60)
+                    var apps=[AudioApplication]()
+                    repeat {
+                        guard !request.cancelled.load(ordering:.acquiring) else { throw AudioFailure(operation:"Playback request cancelled",status:-1) }
+                        apps=try ProcessAudioManager().applications(includeInactive:true).filter {
+                            $0.id != Bundle.main.bundleIdentifier && $0.id != "com.avanturation.Vanille" && !(settings.applications[$0.id]?.bypass ?? false) && ($0.outputDevices.isEmpty || $0.outputDevices.contains(device.id))
+                        }
+                        if !apps.isEmpty { break }
+                        DispatchQueue.main.async {
+                            guard self.virtualAttempt==attempt else { return }
+                            self.virtualStage="Waiting for audio playback";self.refresh()
+                        }
+                        Thread.sleep(forTimeInterval:0.25)
+                    } while Date()<deadline
+                    guard !apps.isEmpty else { throw AudioFailure(operation:"Start audio playback, then try again",status:-1) }
                     // Initial value comes from the earlier 3.7–4.6 s measurements, not a user delay control.
                     let route=try LatencyDeclaredRoute(physical:device,frames:192_000,mainTiming:useTiming)
+                    let session:LiveBridgeSession
+                    do {
+                        session=try LiveBridgeSession(player:self.player,device:device,apps:apps,settings:settings,tone:false,
+                            captureDeviceUID:LatencyDeclaredRoute.uid,expectedDefault:route.object,
+                            // Aggregate latency compensation already delays its physical member.
+                            // The processed MR4 mirror must use the physical HAL output directly.
+                            separateOutput:device.id,deferDefaultWatch:true,progress: { stage in
+                                let event:[String:Any]=["stage":stage,"defaultID":self.manager.defaultOutput(),
+                                    "expectedID":route.object,"alive":(try? HAL.read(route.object,kAudioDevicePropertyDeviceIsAlive,default:UInt32(0))) ?? 0,
+                                    "canBeDefault":(try? HAL.read(route.object,kAudioDevicePropertyDeviceCanBeDefaultDevice,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput)) ?? 0]
+                                DispatchQueue.main.async {
+                                    guard self.virtualAttempt==attempt else { return }
+                                    self.virtualStage=stage;self.virtualEvents.append(event);self.refresh()
+                                }
+                            },currentDeclaredLatency: { Double(route.declaredFrames)/48_000 },requestDeclaredLatency: { route.requestLatency(seconds:$0) },declarationError: { route.configurationStatus },sourceProvider: {
+                                try ProcessAudioManager().applications(includeInactive:true).filter {
+                                    $0.id != Bundle.main.bundleIdentifier && $0.id != "com.avanturation.Vanille" && !(settings.applications[$0.id]?.bypass ?? false) && ($0.outputDevices.isEmpty || $0.outputDevices.contains(device.id) || $0.outputDevices.contains(route.object))
+                                }
+                            })
+                    } catch {
+                        route.restore();let report=route.snapshot
+                        DispatchQueue.main.async { if self.virtualAttempt==attempt { self.lastVirtualRoute=report } }
+                        throw error
+                    }
                     do { try route.activate(cancelled: { request.cancelled.load(ordering:.acquiring) }) }
                     catch {
-                        route.restore();let report=route.snapshot
+                        session.stop();route.restore();let report=route.snapshot
                         DispatchQueue.main.async {
                             guard self.virtualAttempt==attempt else { return }
                             self.virtualPreparing=false;self.lastVirtualRoute=report;self.liveError=error.localizedDescription;self.refresh()
                         }
                         return
                     }
+                    session.beginDefaultWatch()
                     DispatchQueue.main.async {
-                        guard self.virtualAttempt==attempt else { route.restore();return }
+                        guard self.virtualAttempt==attempt else { route.restoreSelection();session.stop();route.restore();return }
                         self.virtualPreparing=false;self.virtualRoute=route
                         do {
-                            let session=try LiveBridgeSession(player:self.player,device:device,apps:apps,settings:settings,tone:false,
-                                captureDeviceUID:LatencyDeclaredRoute.uid,expectedDefault:route.object)
                             self.live=session
                             try session.replaceOriginal(true)
                             session.onFailure={ [weak self] error in
@@ -282,7 +335,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
                                 self?.stopLive();self?.refresh()
                             }
                             self.mode.selectedSegment=1;self.videoHolder.isHidden=true
-                            self.scope.stringValue="Experimental source-player latency declaration. Safari/YouTube A/V has not passed verification. No video capture or timeline changes."
+                            self.scope.stringValue="Video Mode is playing. Timing adjusts automatically. Pause and seek responsiveness is being tested."
                         } catch { self.liveError=error.localizedDescription;self.stopLive() }
                         self.refresh()
                     }
@@ -292,6 +345,13 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
                 } }
             }
         } catch { virtualPreparing=false;liveError=error.localizedDescription;refresh() }
+    }
+    @objc func restoreExperimentalOutput() {
+        guard !virtualPreparing,!virtualProbeRunning,live == nil,virtualRoute == nil,
+              let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        do { lastVirtualRoute=try LatencyDeclaredRoute.recoverStale(physical:device);liveError="" }
+        catch { liveError=error.localizedDescription }
+        refresh()
     }
     @objc func runComparison() {
         let selected=cases.indexOfSelectedItem
@@ -334,19 +394,21 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
             DispatchQueue.main.async { self?.streamCheckReport=report;self?.refresh() }
         }
     }
-    @objc func pausePlayer() { player.pause();refresh() }
+    @objc func pausePlayer() { if let live { live.pausePlayback() } else { player.pause() };refresh() }
+    @objc func syncCurrentAudio() { live?.resynchronize() }
     @objc func resumePlayer() {
         guard live != nil,player.currentItem != nil else { player.play();return }
         player.pause()
         live?.prepareForSeek()
         // Pausing a live utility must not turn it into a growing delayed recording.
         player.seek(to:.positiveInfinity) { [weak self] finished in
-            DispatchQueue.main.async { if finished { self?.player.play() };self?.refresh() }
+            DispatchQueue.main.async { if finished { self?.live?.resumePlayback() };self?.refresh() }
         }
     }
     @objc func refresh() {
-        liveSystemButton.isEnabled=mode.selectedSegment==0
-        liveSystemButton.toolTip=mode.selectedSegment==0 ? "Route audio using the current gain and EQ settings" : "External video keeps its original audio. Choose Music Mode for multi-speaker audio."
+        liveSystemButton.isEnabled = !virtualPreparing && live == nil
+        liveSystemButton.title=live != nil ? "Playing" : virtualPreparing ? "Connecting…" : "Start"
+        liveSystemButton.toolTip=mode.selectedSegment==0 ? "Route audio using the current gain and EQ settings" : "Synchronize video with the selected speakers"
         let outputs = (try? manager.outputs()) ?? []
         let current = outputs.first { $0.id == manager.defaultOutput() } ?? virtualRoute.map {
             OutputDevice(id:$0.object,uid:LatencyDeclaredRoute.uid,name:"Vanille Video Output",channels:4,sampleRate:48_000,transport:kAudioDeviceTransportTypeAggregate)
@@ -359,7 +421,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
             item.preferredForwardBufferDuration=0.35
             item.configuredTimeOffsetFromLive=CMTime(seconds:1.05,preferredTimescale:48_000)
             item.automaticallyPreservesTimeOffsetFromLive=true
-            player.replaceCurrentItem(with:item);player.volume=1;player.play()
+            player.replaceCurrentItem(with:item);player.volume=1
+            if virtualRoute != nil { player.playImmediately(atRate:1) } else { player.play() }
         }
         let http=server?.metrics
         let liveSnapshot=live?.snapshot ?? lastLive
@@ -376,6 +439,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         diagnosticReport["virtualLatencyProbe"]=virtualLatencyProbe
         diagnosticReport["virtualOutput"]=virtualRoute?.snapshot ?? lastVirtualRoute
         diagnosticReport["virtualOutputPreparing"]=virtualPreparing
+        diagnosticReport["virtualOutputStage"]=virtualStage
+        diagnosticReport["virtualOutputEvents"]=virtualEvents
         diagnosticReport["video"]=controlledVideo.snapshot
         diagnosticReport["comparison"]=measurement?.summary ?? lastMeasurement
         if let item {

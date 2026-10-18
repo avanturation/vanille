@@ -1,0 +1,66 @@
+{
+  "defaultOutput": "CalDigit TS4 Audio - Rear",
+  "defaultTransport": "Local",
+  "error": "System output changed; original output restored (-1)",
+  "live": {
+    "alignmentActivations": 0,
+    "bufferedSeconds": 0,
+    "captureCallbacks": 0,
+    "capturedApplications": [
+
+    ],
+    "capturedInputPeak": 0,
+    "cleanup": {
+      "aggregate": 0,
+      "io": 0,
+      "stop": 0,
+      "tap": 0
+    },
+    "encodedFrames": 0,
+    "encoderQueueMS": 0,
+    "error": "System output changed; original output restored (-1)",
+    "initializationBytes": 0,
+    "ioTiming": {
+      "cycleFlags": 0,
+      "frames": 0,
+      "hostTimeValid": false,
+      "inputFlags": 0,
+      "outputFlags": 0,
+      "outputSampleTime": 0,
+      "rateScalar": 0,
+      "rateScalarValid": false,
+      "sampleTimeValid": false,
+      "sourceFrame": 0
+    },
+    "lastEndPTS": 0,
+    "localFrameErrorMS": 0,
+    "localOutputRMS": 0,
+    "maximumPartDuration": 0,
+    "memoryOnly": true,
+    "mr4Enabled": false,
+    "originalReplaced": false,
+    "partialSegmentManifest": true,
+    "playbackClockReady": false,
+    "playbackFrame": 0,
+    "retainedEncodedBytes": 0,
+    "segmentCount": 0,
+    "sourceFrames": 0,
+    "totalSegments": 0
+  },
+  "virtualOutput": {
+    "activationWaitMS": 0.2570152282714844,
+    "aggregateExists": false,
+    "canBeDefault": 1,
+    "cleanup": {
+      "destroyAggregate": 0,
+      "restoreLatency": 0
+    },
+    "declaredFrames": 192000,
+    "declaredMS": 4000,
+    "externalVideoSyncVerified": false,
+    "hidden": 0,
+    "isSystemDefault": false,
+    "timingIsMain": true
+  },
+  "virtualOutputPreparing": false
+}

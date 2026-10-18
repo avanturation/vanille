@@ -1,6 +1,6 @@
 # Architecture
 
-> 별도 다중 AirPlay 브리지의 구조는 [EXPERIMENT_AIRPLAY.md](EXPERIMENT_AIRPLAY.md), 최신 클록 계측·제어 가능한 영상 보정·외부 영상 제한은 [AV_SYNC_REPORT.md](AV_SYNC_REPORT.md)에 있습니다. 아래 구조는 변경하지 않은 정식 HAL 앱입니다.
+> 최신 Video Mode의 공개 타이밍 Aggregate → 사설 탭 캡처 → Gain/EQ → AirPlay 및 물리 MR4 직접 출력 구조와 검증 범위는 [VIDEO_MODE_STATUS.md](VIDEO_MODE_STATUS.md)에 있습니다. Safari 연속 재생의 사용자 확인과 조작 후 실패를 구분합니다. 아래는 기존 정식 HAL 앱의 구조이며 실험 브리지는 [EXPERIMENT_AIRPLAY.md](EXPERIMENT_AIRPLAY.md), 이전 네 경로 계측은 [AV_SYNC_REPORT.md](AV_SYNC_REPORT.md)에 있습니다.
 
 ## 범위
 

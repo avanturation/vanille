@@ -1,0 +1,104 @@
+{
+  "date" : "2026-10-18T10:22:24Z",
+  "defaultOutput" : "Vanille Video Output",
+  "error" : "",
+  "listenerResult" : {
+    "pauseSeekWaitStillExcessive" : true,
+    "someOutputsCanDrop" : true,
+    "synchronizationCanBreakAfterControls" : true
+  },
+  "live" : {
+    "alignmentActivations" : 1,
+    "automaticLatencyEnabled" : true,
+    "automaticLatencyStatus" : "Latency declaration matches playback",
+    "blockingReloadRequests" : 317,
+    "bufferedSeconds" : 3.4068579270044963,
+    "captureCallbacks" : 28864,
+    "capturedApplications" : [
+      "Google Chrome"
+    ],
+    "capturedInputPeak" : 0,
+    "cleanup" : {
+
+    },
+    "encodedFrames" : 14776320,
+    "encoderQueueMS" : 42.666666666666664,
+    "error" : "",
+    "failureContext" : {
+
+    },
+    "fullSegmentRequests" : 318,
+    "httpBytes" : 2623629,
+    "httpRequests" : 640,
+    "initializationBytes" : 612,
+    "ioTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputAgeAtCallbackMS" : 10.713541666666666,
+      "inputFlags" : 7,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3099426.7877335832,
+      "outputMinusCallbackMS" : 10.619791666666666,
+      "outputMinusCycleMS" : 10.668833333333334,
+      "outputSampleTime" : 14780104,
+      "rateScalar" : 1,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 14776832
+    },
+    "lastEndPTS" : 307.51999999999998,
+    "localFrameErrorMS" : -0.0026061944663524628,
+    "localOutputRMS" : 0,
+    "maximumPartDuration" : 0.32000000000000001,
+    "measuredSourceToPlaybackMS" : 3395.0481770044967,
+    "memoryOnly" : true,
+    "mr4Enabled" : true,
+    "originalReplaced" : true,
+    "outputCallbacks" : 28866,
+    "outputIOTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputFlags" : 0,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3099426.8115477082,
+      "outputMinusCallbackMS" : 11.682083333333333,
+      "outputMinusCycleMS" : 11.716333333333333,
+      "outputSampleTime" : 14798240,
+      "rateScalar" : 0.99999700670986036,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 14778368
+    },
+    "partialSegmentManifest" : true,
+    "partialSegmentRequests" : 3,
+    "playbackClockReady" : true,
+    "playbackFrame" : 14614838.819503784,
+    "playbackRecoveryAttempts" : 1,
+    "retainedEncodedBytes" : 19092,
+    "segmentCount" : 60,
+    "sourceFrames" : 14778368,
+    "stableSourceToPlaybackMS" : 3395.0476472574869,
+    "totalSegments" : 961
+  },
+  "overallVideoAcceptancePassed" : false,
+  "stalls" : 0,
+  "timeControlStatus" : 2,
+  "virtualOutput" : {
+    "activationWaitMS" : 0.1430511474609375,
+    "aggregateExists" : true,
+    "automaticLatencyUpdates" : 1,
+    "canBeDefault" : 1,
+    "cleanup" : {
+
+    },
+    "declaredFrames" : 163200,
+    "declaredMS" : 3400,
+    "externalVideoSyncVerified" : false,
+    "hidden" : 0,
+    "isSystemDefault" : true,
+    "latencyConfigurationStatus" : 0,
+    "timingIsMain" : true
+  }
+}

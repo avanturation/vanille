@@ -1,0 +1,143 @@
+{
+  "clockDeviceName" : "Unavailable",
+  "date" : "2026-10-18T09:58:55Z",
+  "defaultOutput" : "Vanille Video Output",
+  "error" : "",
+  "listenerResult" : {
+    "allThreeOutputsAudible" : true,
+    "homepodVideoQualitativelyMatched" : true,
+    "mr4Late" : true,
+    "pauseAndSeekBufferingExcessive" : true
+  },
+  "live" : {
+    "alignmentActivations" : 1,
+    "blockingReloadRequests" : 15,
+    "bufferedSeconds" : 3.7457174015045167,
+    "captureCallbacks" : 1605,
+    "capturedApplications" : [
+      "Safari"
+    ],
+    "capturedInputPeak" : 0.083785638213157654,
+    "cleanup" : {
+
+    },
+    "encodedFrames" : 821248,
+    "encoderQueueMS" : 10.666666666666666,
+    "error" : "",
+    "failureContext" : {
+
+    },
+    "fullSegmentRequests" : 16,
+    "httpBytes" : 306298,
+    "httpRequests" : 36,
+    "initializationBytes" : 612,
+    "ioTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputAgeAtCallbackMS" : 10.696000000000002,
+      "inputFlags" : 7,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3098017.8894861252,
+      "outputMinusCallbackMS" : 10.637333333333334,
+      "outputMinusCycleMS" : 10.676,
+      "outputSampleTime" : 957746,
+      "rateScalar" : 1,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 820736
+    },
+    "lastEndPTS" : 16.960000000000001,
+    "localFrameErrorMS" : 0.00012820945266867056,
+    "localOutputRMS" : 0.0046965329852501052,
+    "maximumPartDuration" : 0.32000000000000001,
+    "memoryOnly" : true,
+    "mr4Enabled" : true,
+    "originalReplaced" : true,
+    "outputCallbacks" : 1600,
+    "outputIOTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputFlags" : 0,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3098017.900051875,
+      "outputMinusCallbackMS" : 10.543083333333334,
+      "outputMinusCycleMS" : 10.658833333333332,
+      "outputSampleTime" : 123413936,
+      "rateScalar" : 1,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 821248
+    },
+    "partialSegmentManifest" : true,
+    "partialSegmentRequests" : 3,
+    "playbackClockReady" : true,
+    "playbackFrame" : 641965.5647277832,
+    "retainedEncodedBytes" : 285949,
+    "segmentCount" : 53,
+    "sourceFrames" : 821760,
+    "totalSegments" : 53
+  },
+  "overallVideoAcceptancePassed" : false,
+  "scope" : "Safari YouTube with installed 0.1.2 driver. User confirmed HomePod\/video agreement, but MR4 was late and pause\/seek were slow. Numerical signals are not acoustic proof.",
+  "timeControlStatus" : 2,
+  "virtualOutput" : {
+    "activationWaitMS" : 0.47397613525390625,
+    "aggregateExists" : true,
+    "canBeDefault" : 1,
+    "cleanup" : {
+
+    },
+    "declaredFrames" : 192000,
+    "declaredMS" : 4000,
+    "externalVideoSyncVerified" : false,
+    "hidden" : 0,
+    "isSystemDefault" : true,
+    "timingIsMain" : true
+  },
+  "virtualOutputEvents" : [
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Creating private capture tap"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Creating private capture aggregate"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Registering capture callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Starting independent output callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Starting capture callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Capture and output callbacks started"
+    }
+  ]
+}

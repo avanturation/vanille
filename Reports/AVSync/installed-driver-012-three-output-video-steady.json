@@ -1,0 +1,143 @@
+{
+  "date" : "2026-10-18T10:07:55Z",
+  "defaultOutput" : "Vanille Video Output",
+  "error" : "",
+  "listenerResult" : {
+    "allThreeOutputsAudible" : true,
+    "mr4AndHomepodsAndSafariQualitativelyMatched" : true,
+    "pauseAndSeekResponsivenessPassed" : false
+  },
+  "live" : {
+    "alignmentActivations" : 1,
+    "blockingReloadRequests" : 226,
+    "bufferedSeconds" : 3.5467177680333455,
+    "captureCallbacks" : 20588,
+    "capturedApplications" : [
+      "Safari"
+    ],
+    "capturedInputPeak" : 0,
+    "cleanup" : {
+
+    },
+    "encodedFrames" : 10541056,
+    "encoderQueueMS" : 0,
+    "error" : "",
+    "failureContext" : {
+
+    },
+    "fullSegmentRequests" : 226,
+    "httpBytes" : 2948888,
+    "httpRequests" : 458,
+    "initializationBytes" : 612,
+    "ioTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputAgeAtCallbackMS" : 10.712541666666667,
+      "inputFlags" : 7,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3098557.9744886667,
+      "outputMinusCallbackMS" : 10.620791666666667,
+      "outputMinusCycleMS" : 10.664333333333333,
+      "outputSampleTime" : 10729994,
+      "rateScalar" : 1,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 10540544
+    },
+    "lastEndPTS" : 219.51999999999998,
+    "localFrameErrorMS" : 0.0033818649826571345,
+    "localOutputRMS" : 0,
+    "maximumPartDuration" : 0.32000000000000001,
+    "memoryOnly" : true,
+    "mr4Enabled" : true,
+    "originalReplaced" : true,
+    "outputCallbacks" : 20581,
+    "outputIOTiming" : {
+      "cycleFlags" : 7,
+      "frames" : 512,
+      "hostTimeValid" : true,
+      "inputFlags" : 0,
+      "outputFlags" : 7,
+      "outputHostSeconds" : 3098557.9759426666,
+      "outputMinusCallbackMS" : 11.671333333333333,
+      "outputMinusCycleMS" : 11.711625,
+      "outputSampleTime" : 14279556,
+      "rateScalar" : 0.99999748617307449,
+      "rateScalarValid" : true,
+      "sampleTimeValid" : true,
+      "sourceFrame" : 10541056
+    },
+    "partialSegmentManifest" : true,
+    "partialSegmentRequests" : 4,
+    "playbackClockReady" : true,
+    "playbackFrame" : 10370813.547134399,
+    "retainedEncodedBytes" : 323330,
+    "segmentCount" : 60,
+    "sourceFrames" : 10541056,
+    "totalSegments" : 686
+  },
+  "recommendedLiveOffset" : 3,
+  "scope" : "User confirmed steady Safari YouTube playback across MR4 and both HomePod destinations. Pause\/seek responsiveness remains under investigation. No acoustic numerical measurement or DRM claim.",
+  "stalls" : 0,
+  "startupTime" : 0.087547898292541504,
+  "timeControlStatus" : 2,
+  "virtualOutput" : {
+    "activationWaitMS" : 0.21100044250488281,
+    "aggregateExists" : true,
+    "canBeDefault" : 1,
+    "cleanup" : {
+
+    },
+    "declaredFrames" : 192000,
+    "declaredMS" : 4000,
+    "externalVideoSyncVerified" : false,
+    "hidden" : 0,
+    "isSystemDefault" : true,
+    "timingIsMain" : true
+  },
+  "virtualOutputEvents" : [
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Creating private capture tap"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Creating private capture aggregate"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Registering capture callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Starting independent output callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Starting capture callback"
+    },
+    {
+      "alive" : 1,
+      "canBeDefault" : 1,
+      "defaultID" : 139,
+      "expectedID" : 191,
+      "stage" : "Capture and output callbacks started"
+    }
+  ]
+}
