@@ -76,6 +76,12 @@ func setWord(_ object: UInt32, _ selector: UInt32, _ value: UInt32, _ scope: UIn
     return api.SetPropertyData(reference, object, 0, &a, 0, nil, 4, &value)
 }
 let control: UInt32 = 0x766C6174
+func requestLatency(_ text: String) -> OSStatus {
+    let cf = text as CFString
+    var pointer: UnsafeMutableRawPointer? = Unmanaged.passUnretained(cf).toOpaque()
+    var a = address(control)
+    return withExtendedLifetime(cf) { api.SetPropertyData(reference, 2, 0, &a, 0, nil, UInt32(MemoryLayout.size(ofValue: pointer)), &pointer) }
+}
 check("Plug-in publishes one device", size(1, kAudioPlugInPropertyDeviceList) == 4 && word(1, kAudioPlugInPropertyDeviceList) == 2)
 check("Object ownership", word(2, kAudioObjectPropertyOwner) == 1 && word(3, kAudioObjectPropertyOwner) == 2)
 check("Device and stream class", word(2, kAudioObjectPropertyClass) == kAudioDeviceClassID && word(3, kAudioObjectPropertyClass) == kAudioStreamClassID)
@@ -91,18 +97,31 @@ check("Standard latency property is read-only", api.IsPropertySettable(reference
 check("Standard latency cannot be changed without handshake", setWord(2, kAudioDevicePropertyLatency, 1, output) != noErr)
 a = address(control); settable = false
 check("Declared custom control is writable", api.IsPropertySettable(reference, 2, 0, &a, &settable) == noErr && settable.boolValue && size(2, kAudioObjectPropertyCustomPropertyInfoList) == MemoryLayout<AudioServerPlugInCustomPropertyInfo>.size)
-check("Latency request succeeds", setWord(2, control, 192_000) == noErr)
+var infoAddress=address(kAudioObjectPropertyCustomPropertyInfoList), customInfo=AudioServerPlugInCustomPropertyInfo(), infoUsed:UInt32=0
+check("Host-supported custom property wire type", api.GetPropertyData(reference, 2, 0, &infoAddress, 0, nil, UInt32(MemoryLayout.size(ofValue:customInfo)), &infoUsed, &customInfo)==noErr && customInfo.mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFString && customInfo.mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone)
+check("Raw UInt32 cannot masquerade as a marshalled custom value", setWord(2, control, 192_000) == kAudioHardwareBadPropertySizeError)
+check("Latency request succeeds", requestLatency("192000") == noErr)
 check("Request sent to host", hostState.requests.count == 1 && hostState.requests[0].0 == 2 && hostState.requests[0].1 == 192_000)
 check("Latency remains unchanged until host accepts", word(2, kAudioDevicePropertyLatency, output) == 0)
 check("Host can abort without changing latency", api.AbortDeviceConfigurationChange(reference, 2, 192_000, nil) == noErr && word(2, kAudioDevicePropertyLatency, output) == 0)
 check("Host-approved change applies", api.PerformDeviceConfigurationChange(reference, 2, 192_000, nil) == noErr && word(2, kAudioDevicePropertyLatency, output) == 192_000)
 check("Input latency remains zero", word(2, kAudioDevicePropertyLatency, input) == 0)
 check("Safety offset remains independent", word(2, kAudioDevicePropertySafetyOffset, output) == 0)
-check("Repeated equal latency does not restart IO", setWord(2, control, 192_000) == noErr && hostState.requests.count == 1)
-check("Reject implausible latency", setWord(2, control, 480_001) != noErr && word(2, control) == 192_000)
-check("Reject invalid host action", api.PerformDeviceConfigurationChange(reference, 2, UInt64.max, nil) != noErr && word(2, control) == 192_000)
+check("Repeated equal latency does not restart IO", requestLatency("192000") == noErr && hostState.requests.count == 1)
+check("Reject implausible latency", requestLatency("480001") != noErr && word(2, kAudioDevicePropertyLatency, output) == 192_000)
+check("Reject invalid host action", api.PerformDeviceConfigurationChange(reference, 2, UInt64.max, nil) != noErr && word(2, kAudioDevicePropertyLatency, output) == 192_000)
+check("Reject non-numeric custom data", requestLatency("NaN") != noErr && requestLatency("-1") != noErr)
+var nilCF:UnsafeRawPointer?=nil
+check("Reject nil CF string", api.SetPropertyData(reference,2,0,&a,0,nil,UInt32(MemoryLayout.size(ofValue:nilCF)),&nilCF) != noErr)
+let wrongCF=NSNumber(value:192000)
+var wrongPointer:UnsafeMutableRawPointer?=Unmanaged.passUnretained(wrongCF).toOpaque()
+check("Reject a different CF object type", withExtendedLifetime(wrongCF) { api.SetPropertyData(reference,2,0,&a,0,nil,UInt32(MemoryLayout.size(ofValue:wrongPointer)),&wrongPointer) } != noErr)
+var customPointer:UnsafeMutableRawPointer?, customUsed:UInt32=0
+let readCustom=api.GetPropertyData(reference,2,0,&a,0,nil,UInt32(MemoryLayout.size(ofValue:customPointer)),&customUsed,&customPointer)
+let customString=customPointer.map { Unmanaged<CFString>.fromOpaque($0).takeRetainedValue() }
+check("Returned custom value is retained CFString", readCustom==noErr && customString.map { CFEqual($0,"192000" as CFString) } == true)
 hostState.rejectRequest = true
-check("Host rejection propagates safely", setWord(2, control, 96_000) != noErr && word(2, control) == 192_000)
+check("Host rejection propagates safely", requestLatency("96000") != noErr && word(2, kAudioDevicePropertyLatency, output) == 192_000)
 hostState.rejectRequest = false
 var short: UInt16 = 5
 check("Reject malformed setter size", api.SetPropertyData(reference, 2, 0, &a, 0, nil, 2, &short) == kAudioHardwareBadPropertySizeError)
@@ -176,7 +195,7 @@ DispatchQueue.concurrentPerform(iterations: 4) { worker in
     }
 }
 check("100,000 concurrent clock/configuration calls", concurrentFailures.load(ordering: .relaxed) == 0)
-check("Latency can return to zero", api.PerformDeviceConfigurationChange(reference, 2, 0, nil) == noErr && word(2, control) == 0)
+check("Latency can return to zero", api.PerformDeviceConfigurationChange(reference, 2, 0, nil) == noErr && word(2, kAudioDevicePropertyLatency, output) == 0)
 let passed = results.filter { $0.1 }.count
 print("\(passed)/\(results.count) latency driver checks passed. Driver was not installed; physical audio and Safari A/V are not verified.")
 if let destination = ProcessInfo.processInfo.environment["VANILLE_DRIVER_REPORT"] {

@@ -13,6 +13,7 @@ final class LiveBridgeSession {
     private var timer:DispatchSourceTimer?
     private let player:AVPlayer
     private let device:OutputDevice
+    private let expectedDefault:AudioObjectID
     private let testEndsAt:Date?
     private var cursor:Int64=0
     private let pcm=UnsafeMutablePointer<Float>.allocate(capacity:4096)
@@ -30,13 +31,13 @@ final class LiveBridgeSession {
     var startedItem=false // main thread only
     var onFailure:((String)->Void)?
 
-    init(player:AVPlayer,device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool,syncTone:Bool=false) throws {
-        self.player=player;self.device=device;testEndsAt=tone ? Date().addingTimeInterval(syncTone ? 150 : 90) : nil
+    init(player:AVPlayer,device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool,syncTone:Bool=false,captureDeviceUID:String?=nil,expectedDefault:AudioObjectID?=nil) throws {
+        self.player=player;self.device=device;self.expectedDefault=expectedDefault ?? device.id;testEndsAt=tone ? Date().addingTimeInterval(syncTone ? 150 : 90) : nil
         pcm.initialize(repeating:0,count:4096)
         do {
             try queue.sync {
                 let segments=try LiveSegments(sampleRate:48_000);self.segments=segments
-                try capture.start(device:device,apps:apps,settings:settings,tone:tone,syncTone:syncTone)
+                try capture.start(device:device,apps:apps,settings:settings,tone:tone,syncTone:syncTone,captureDeviceUID:captureDeviceUID)
                 callbackChangedAt=Date()
                 let server=MemoryHTTPServer { [weak segments] path in segments?.resource(path) }
                 self.server=server
@@ -63,7 +64,7 @@ final class LiveBridgeSession {
             if Date().timeIntervalSince(lastHardwareCheck)>0.5 {
                 lastHardwareCheck=Date()
                 let currentRate=(try? HAL.read(device.id,kAudioDevicePropertyNominalSampleRate,default:Double(0))) ?? 0
-                guard DeviceManager().defaultOutput()==device.id,
+                guard DeviceManager().defaultOutput()==expectedDefault,
                       (try? HAL.read(device.id,kAudioDevicePropertyDeviceIsAlive,default:UInt32(0)))==1,
                       abs(currentRate-48_000)<1 else {
                     throw AudioFailure(operation:"System output changed; original output restored",status:-1)
@@ -80,7 +81,7 @@ final class LiveBridgeSession {
             if alignmentRequested,let timebase=player.currentItem?.timebase {
                 var id:AudioDeviceID=0
                 let status=CMAudioDeviceClockGetAudioDevice(CMTimebaseCopyUltimateSourceClock(timebase),deviceUIDOut:nil,deviceIDOut:&id,trackingDefaultDeviceOut:nil)
-                if status==noErr,id==device.id {
+                if status==noErr,(id==device.id || id==expectedDefault) {
                     throw AudioFailure(operation:"Player returned to the Mac; original MR4 output restored. Select AirPlay again before restarting",status:-1)
                 }
             }

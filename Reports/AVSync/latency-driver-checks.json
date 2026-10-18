@@ -93,6 +93,14 @@
       "passed" : true
     },
     {
+      "name" : "Host-supported custom property wire type",
+      "passed" : true
+    },
+    {
+      "name" : "Raw UInt32 cannot masquerade as a marshalled custom value",
+      "passed" : true
+    },
+    {
       "name" : "Latency request succeeds",
       "passed" : true
     },
@@ -130,6 +138,22 @@
     },
     {
       "name" : "Reject invalid host action",
+      "passed" : true
+    },
+    {
+      "name" : "Reject non-numeric custom data",
+      "passed" : true
+    },
+    {
+      "name" : "Reject nil CF string",
+      "passed" : true
+    },
+    {
+      "name" : "Reject a different CF object type",
+      "passed" : true
+    },
+    {
+      "name" : "Returned custom value is retained CFString",
       "passed" : true
     },
     {
@@ -247,7 +271,7 @@
   ],
   "externalVideoSyncVerified" : false,
   "installed" : false,
-  "passed" : 61,
+  "passed" : 67,
   "physicalAudioVerified" : false,
-  "total" : 61
+  "total" : 67
 }

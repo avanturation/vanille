@@ -14,8 +14,8 @@ pkgbuild --analyze --root "$PAYLOAD_ROOT" "$STAGING_ROOT/Components.plist"
 /usr/libexec/PlistBuddy -c 'Add :0:BundleHasStrictIdentifier bool true' "$STAGING_ROOT/Components.plist"
 pkgbuild --root "$PAYLOAD_ROOT" --install-location / --ownership recommended \
   --component-plist "$STAGING_ROOT/Components.plist" \
-  --identifier com.avanturation.Vanille.LatencyClock.Installer --version 0.1.0 \
-  --scripts "$PROJECT_DIR/Scripts/DriverInstall" "$DESTINATION/Install-Vanille-Video-Timing.pkg"
+  --identifier com.avanturation.Vanille.LatencyClock.Installer --version 0.1.1 \
+  --scripts "$PROJECT_DIR/Scripts/DriverInstall" "$DESTINATION/Update-Vanille-Video-Timing-0.1.1.pkg"
 pkgbuild --nopayload --identifier com.avanturation.Vanille.LatencyClock.Remover --version 0.1.0 \
   --scripts "$PROJECT_DIR/Scripts/DriverRemove" "$DESTINATION/Remove-Vanille-Video-Timing.pkg"
 cp "$PROJECT_DIR/build/latency-driver-checks.json" "$DESTINATION/DRIVER_CHECKS.json"

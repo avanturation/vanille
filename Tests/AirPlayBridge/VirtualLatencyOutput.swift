@@ -7,14 +7,20 @@ enum VirtualLatencyOutput {
     static let control: AudioObjectPropertySelector = 0x766C6174
 
     static func timingDevice() throws -> AudioObjectID {
-        guard let object = try HAL.objects(HAL.system, kAudioHardwarePropertyDevices).first(where: {
-            (try? HAL.string($0, kAudioDevicePropertyDeviceUID)) == timingUID
-        }) else { throw AudioFailure(operation: "Vanille timing driver is not installed or loaded; the original output is unchanged", status: kAudioHardwareBadDeviceError) }
+        // Hidden devices are intentionally absent from kAudioHardwarePropertyDevices.
+        let uid = timingUID as CFString
+        var qualifier: UnsafeMutableRawPointer? = Unmanaged.passUnretained(uid).toOpaque()
+        var object: AudioObjectID = 0, size = UInt32(MemoryLayout<AudioObjectID>.size)
+        var property = HAL.address(kAudioHardwarePropertyTranslateUIDToDevice)
+        try HAL.check(AudioObjectGetPropertyData(HAL.system, &property, UInt32(MemoryLayout.size(ofValue: qualifier)), &qualifier, &size, &object), "Resolve hidden Vanille timing device")
+        guard object != 0 else { throw AudioFailure(operation: "Vanille timing driver is not installed or loaded; the original output is unchanged", status: kAudioHardwareBadDeviceError) }
         return object
     }
 
     static func configure(_ device: AudioObjectID, frames: UInt32) throws {
-        try HAL.write(device, control, value: frames)
+        let text = String(frames) as CFString
+        let payload = Unmanaged.passUnretained(text).toOpaque()
+        try withExtendedLifetime(text) { try HAL.write(device, control, value: payload) }
         // AudioServerPlugIn changes are asynchronous and host-approved. Never assume setter completion.
         let deadline = Date().addingTimeInterval(5)
         repeat {
@@ -44,7 +50,7 @@ enum VirtualLatencyOutput {
         var previous: UInt32 = 0
         do {
             timing = try timingDevice()
-            previous = try HAL.read(timing, control, default: UInt32(0))
+            previous = try HAL.read(timing, kAudioDevicePropertyLatency, default: UInt32(0), scope: kAudioObjectPropertyScopeOutput)
             report["timingDriverLoaded"] = true
             report["standaloneDefaultAllowed"] = try HAL.read(timing, kAudioDevicePropertyDeviceCanBeDefaultDevice, default: UInt32.max, scope: kAudioObjectPropertyScopeOutput)
             report["hidden"] = try HAL.read(timing, kAudioDevicePropertyIsHidden, default: UInt32(0))
@@ -85,4 +91,91 @@ enum VirtualLatencyOutput {
         report["defaultPreserved"] = DeviceManager().defaultOutput() == original
         return report
     }
+}
+
+/// Owns a public aggregate, never a standalone null output. Lifecycle is driven by
+/// explicit app actions and the audio-engine failure path, not UI refresh ticks.
+final class LatencyDeclaredRoute {
+    static let uid = "com.avanturation.Vanille.VideoOutput.Experiment"
+    let physical: OutputDevice
+    private(set) var object: AudioObjectID = 0
+    private(set) var timing: AudioObjectID = 0
+    private var previousLatency: UInt32 = 0
+    private var previousDefault: AudioObjectID = 0
+    private(set) var cleanup = [String: Int32]()
+    private(set) var declaredFrames: UInt32 = 0
+    private(set) var mainTiming = false
+
+    init(physical: OutputDevice, frames: UInt32, mainTiming: Bool) throws {
+        self.physical = physical; self.mainTiming = mainTiming
+        previousDefault = DeviceManager().defaultOutput()
+        guard previousDefault == physical.id, physical.channels == 2, !physical.isAirPlay,
+              abs(physical.sampleRate - 48_000) < 1 else {
+            throw AudioFailure(operation: "Restore MR4 before creating the experimental video output", status: -1)
+        }
+        do {
+            let existing = try HAL.objects(HAL.system, kAudioHardwarePropertyDevices).filter {
+                (try? HAL.string($0, kAudioDevicePropertyDeviceUID)) == Self.uid
+            }
+            // Do not silently take ownership of a device left by another instance.
+            guard existing.isEmpty else { throw AudioFailure(operation: "An earlier Vanille experimental output still exists; restore it before retrying", status: -1) }
+            timing = try VirtualLatencyOutput.timingDevice()
+            previousLatency = try HAL.read(timing, kAudioDevicePropertyLatency, default: UInt32(0), scope: kAudioObjectPropertyScopeOutput)
+            try VirtualLatencyOutput.configure(timing, frames: frames)
+            try HAL.check(AudioHardwareCreateAggregateDevice(VirtualLatencyOutput.composition(physical: physical, timing: timing,
+                mainTiming: mainTiming, isPrivate: false, uid: Self.uid) as CFDictionary, &object), "Create latency-aware system output")
+            Thread.sleep(forTimeInterval: 0.2)
+            guard try HAL.channelCount(object, scope: kAudioObjectPropertyScopeOutput) == 2,
+                  try HAL.read(object, kAudioDevicePropertyDeviceCanBeDefaultDevice, default: UInt32(0), scope: kAudioObjectPropertyScopeOutput) == 1 else {
+                throw AudioFailure(operation: "The virtual aggregate cannot provide a default stereo output", status: -1)
+            }
+            let latency = try HAL.read(object, kAudioDevicePropertyLatency, default: UInt32(0), scope: kAudioObjectPropertyScopeOutput)
+            guard latency >= frames, latency <= frames + 4_800 else {
+                throw AudioFailure(operation: "The aggregate did not expose the real downstream latency; original output retained", status: -1)
+            }
+            declaredFrames = frames
+        } catch { restore(); throw error }
+    }
+
+    func activate() throws {
+        guard object != 0, DeviceManager().defaultOutput() == previousDefault else {
+            throw AudioFailure(operation: "Default output changed before activating video routing", status: -1)
+        }
+        try HAL.write(HAL.system, kAudioHardwarePropertyDefaultOutputDevice, value: object)
+        guard DeviceManager().defaultOutput() == object else {
+            throw AudioFailure(operation: "The audio server did not select the experimental output", status: -1)
+        }
+    }
+
+    func restore() {
+        guard object != 0 || timing != 0 else { return }
+        if object != 0, DeviceManager().defaultOutput() == object {
+            do {
+                let alive = (try? HAL.read(physical.id, kAudioDevicePropertyDeviceIsAlive, default: UInt32(0))) == 1
+                let fallback = alive ? physical.id : (try DeviceManager().outputs().first { !$0.isAirPlay && $0.channels > 0 }?.id ?? 0)
+                guard fallback != 0 else { throw AudioFailure(operation: "No original output is available", status: -1) }
+                try HAL.write(HAL.system, kAudioHardwarePropertyDefaultOutputDevice, value: fallback)
+                cleanup["restoreDefault"] = noErr
+            } catch {
+                cleanup["restoreDefault"] = (error as? AudioFailure)?.status ?? -1
+                // Keep the physical aggregate alive if restoring the default failed.
+                return
+            }
+        }
+        if object != 0 {
+            cleanup["destroyAggregate"] = AudioHardwareDestroyAggregateDevice(object)
+            if cleanup["destroyAggregate"] != noErr { return }
+            object = 0
+        }
+        if timing != 0 {
+            do { try VirtualLatencyOutput.configure(timing, frames: previousLatency); cleanup["restoreLatency"] = noErr; timing = 0 }
+            catch { cleanup["restoreLatency"] = (error as? AudioFailure)?.status ?? -1 }
+        }
+    }
+    var snapshot: [String: Any] {
+        ["aggregateExists": object != 0, "isSystemDefault": object != 0 && DeviceManager().defaultOutput() == object,
+         "declaredFrames": declaredFrames, "declaredMS": Double(declaredFrames) / 48,
+         "timingIsMain": mainTiming, "cleanup": cleanup, "externalVideoSyncVerified": false]
+    }
+    deinit { restore() }
 }

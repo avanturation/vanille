@@ -151,10 +151,10 @@ private func property(_ object: AudioObjectID, _ address: AudioObjectPropertyAdd
         case kAudioDevicePropertyPreferredChannelsForStereo:
             return scope == kAudioObjectPropertyScopeOutput ? .ids([1, 2]) : nil
         case LatencyClock.latencyControl:
-            return scope == kAudioObjectPropertyScopeGlobal ? .word(clockState.latency.load(ordering: .acquiring)) : nil
+            return scope == kAudioObjectPropertyScopeGlobal ? .string(String(clockState.latency.load(ordering: .acquiring)) as CFString) : nil
         case kAudioObjectPropertyCustomPropertyInfoList:
             return .custom(AudioServerPlugInCustomPropertyInfo(mSelector: LatencyClock.latencyControl,
-                mPropertyDataType: kAudioServerPlugInCustomPropertyDataTypeNone,
+                mPropertyDataType: kAudioServerPlugInCustomPropertyDataTypeCFString,
                 mQualifierDataType: kAudioServerPlugInCustomPropertyDataTypeNone))
         default: return nil
         }
@@ -248,8 +248,13 @@ private func makeInterface() -> AudioServerPlugInDriverInterface {
         guard property(object, address.pointee) != nil else { return kAudioHardwareUnknownPropertyError }
         switch (object, address.pointee.mSelector) {
         case (2, LatencyClock.latencyControl):
-            guard size == 4 else { return kAudioHardwareBadPropertySizeError }
-            let frames = data.loadUnaligned(as: UInt32.self)
+            // Custom properties can marshal CFString/CFPropertyList or no data.
+            // Raw UInt32 is NOT a supported AudioServerPlugIn custom-property wire type.
+            guard size == MemoryLayout<UnsafeRawPointer?>.size else { return kAudioHardwareBadPropertySizeError }
+            guard let pointer = data.loadUnaligned(as: UnsafeRawPointer?.self) else { return kAudioHardwareIllegalOperationError }
+            let object = Unmanaged<CFTypeRef>.fromOpaque(pointer).takeUnretainedValue()
+            guard CFGetTypeID(object) == CFStringGetTypeID(),
+                  let frames = UInt32((object as! CFString) as String) else { return kAudioHardwareIllegalOperationError }
             guard frames <= LatencyClock.maximumLatency else { return kAudioHardwareIllegalOperationError }
             if frames == clockState.latency.load(ordering: .acquiring) { return noErr }
             clockState.lifecycle.lock(); let host = clockState.host; clockState.lifecycle.unlock()

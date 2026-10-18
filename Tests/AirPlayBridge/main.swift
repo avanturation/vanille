@@ -40,7 +40,13 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     var fixtureStatus="Preparing owned video"
     var latencyPropagation:[String:Any]=[:]
     var sourcePlayerLatency:[String:Any]=[:]
+    var virtualSourcePlayerLatency:[String:Any]=[:]
     var virtualLatencyProbe:[String:Any]=[:]
+    var virtualRoute:LatencyDeclaredRoute?
+    var lastVirtualRoute:[String:Any]=[:]
+    private var virtualProbeRunning=false
+    private var virtualAttempt=UUID()
+    private var virtualPreparing=false
     var sourcePlayerProbe:LatencyAwarePlayerProbe?
     let syncWAVLock=NSLock()
     let controlledVideo=ControlledVideo()
@@ -76,6 +82,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let latency=NSMenuItem(title:"Latency Propagation Probe",action:#selector(probeLatency),keyEquivalent:"l");latency.target=self;playbackMenu.addItem(latency)
         let sourceProbe=NSMenuItem(title:"Source Player Latency Declaration",action:#selector(probeSourcePlayer),keyEquivalent:"Y");sourceProbe.target=self;playbackMenu.addItem(sourceProbe)
         let virtualProbe=NSMenuItem(title:"Virtual Output Latency Probe",action:#selector(probeVirtualOutput),keyEquivalent:"L");virtualProbe.target=self;playbackMenu.addItem(virtualProbe)
+        let videoRouting=NSMenuItem(title:"Start Experimental Video Routing",action:#selector(startVirtualVideo),keyEquivalent:"v");videoRouting.target=self;playbackMenu.addItem(videoRouting)
+        let virtualSource=NSMenuItem(title:"Virtual Output Source Player Probe",action:#selector(probeVirtualSourcePlayer),keyEquivalent:"V");virtualSource.target=self;playbackMenu.addItem(virtualSource)
         let root = NSStackView(); root.orientation = .vertical; root.alignment = .leading; root.spacing = 12
         let intro = NSTextField(wrappingLabelWithString:"Music Mode routes sound to the selected speakers. Video Mode preserves external players’ original audio. The comparison measures only the supplied test clip.")
         intro.font = .systemFont(ofSize:12)
@@ -173,8 +181,12 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         } catch { liveError=error.localizedDescription }
         refresh()
     }
-    private func stopLive() { if let live { live.stop();lastLive=live.snapshot };live=nil;replaceButton.state = .off }
+    private func stopLive() {
+        if let live { live.stop();lastLive=live.snapshot };live=nil;replaceButton.state = .off
+        if let virtualRoute { virtualRoute.restore();lastVirtualRoute=virtualRoute.snapshot };virtualRoute=nil
+    }
     @objc func stop() {
+        virtualAttempt=UUID();virtualPreparing=false
         if let measurement { measurement.onFinish=nil;measurement.stop();lastMeasurement=measurement.summary };measurement=nil
         controlledVideo.stop();stopLive();player.pause();player.replaceCurrentItem(with:nil);refresh()
     }
@@ -199,12 +211,75 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         refresh()
     }
     @objc func probeVirtualOutput() {
-        guard live == nil,measurement == nil,let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        guard !virtualProbeRunning,!virtualPreparing,virtualRoute == nil,live == nil,measurement == nil,let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        virtualProbeRunning=true
         virtualLatencyProbe=["status":"Checking private virtual output; system default stays unchanged"]
         DispatchQueue.global(qos:.utility).async {
             let report=VirtualLatencyOutput.probe(physical:device)
-            DispatchQueue.main.async { self.virtualLatencyProbe=report;self.refresh() }
+            DispatchQueue.main.async { self.virtualProbeRunning=false;self.virtualLatencyProbe=report;self.refresh() }
         }
+    }
+    @objc func probeVirtualSourcePlayer() {
+        guard !virtualProbeRunning,!virtualPreparing,virtualRoute == nil,live == nil,measurement == nil,
+              let baseURL,fixtureStatus.hasPrefix("Ready"),let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        let rows=virtualLatencyProbe["cases"] as? [[String:Any]] ?? []
+        guard let verified=rows.first(where: { ($0["driverLatencyFrames"] as? UInt32)==192_000 && ($0["deviceLatencyFrames"] as? UInt32 ?? 0)>=192_000 && $0["error"] == nil }) else {
+            virtualSourcePlayerLatency=["error":"Run the installed virtual-output property probe first"];refresh();return
+        }
+        sourcePlayerProbe?.cancel();virtualProbeRunning=true
+        virtualSourcePlayerLatency=["status":"Comparing ordinary player with zero and four-second true device latency"]
+        sourcePlayerProbe=LatencyAwarePlayerProbe(physical:device,url:baseURL.appendingPathComponent("sync.wav"),virtualTiming:true,
+            mainTiming:verified["timingIsMain"] as? Bool ?? false) { [weak self] report in
+                self?.virtualProbeRunning=false;self?.virtualSourcePlayerLatency=report;self?.refresh()
+            }
+        refresh()
+    }
+    @objc func startVirtualVideo() {
+        guard !virtualProbeRunning,!virtualPreparing else { return }
+        // The path stays gated until the installed host actually exposes the requested latency.
+        let rows=virtualLatencyProbe["cases"] as? [[String:Any]] ?? []
+        guard let verified=rows.first(where: {
+            ($0["driverLatencyFrames"] as? UInt32)==192_000 && ($0["deviceLatencyFrames"] as? UInt32 ?? 0)>=192_000 &&
+                ($0["canBeDefault"] as? UInt32)==1 && $0["error"] == nil
+        }) else { liveError="Install the timing driver and run Virtual Output Latency Probe first. The original route is preserved.";refresh();return }
+        let useTiming=verified["timingIsMain"] as? Bool ?? false
+        stop();liveError="";virtualPreparing=true
+        let attempt=UUID();virtualAttempt=attempt
+        do {
+            guard let device=try manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { throw AudioFailure(operation:"Restore MR4 before testing video output",status:-1) }
+            let settings=StateStore().load()
+            let apps=try ProcessAudioManager().applications().filter {
+                !$0.id.hasPrefix("com.avanturation.Vanille") && !(settings.applications[$0.id]?.bypass ?? false) && ($0.outputDevices.isEmpty || $0.outputDevices.contains(device.id))
+            }
+            guard !apps.isEmpty else { throw AudioFailure(operation:"Play the Safari test video before starting this experiment",status:-1) }
+            player.audioOutputDeviceUniqueID=nil
+            DispatchQueue.global(qos:.userInitiated).async { [self] in
+                do {
+                    // Initial value comes from the earlier 3.7–4.6 s measurements, not a user delay control.
+                    let route=try LatencyDeclaredRoute(physical:device,frames:192_000,mainTiming:useTiming)
+                    DispatchQueue.main.async {
+                        guard self.virtualAttempt==attempt else { route.restore();return }
+                        self.virtualPreparing=false;self.virtualRoute=route
+                        do {
+                            try route.activate()
+                            let session=try LiveBridgeSession(player:self.player,device:device,apps:apps,settings:settings,tone:false,
+                                captureDeviceUID:LatencyDeclaredRoute.uid,expectedDefault:route.object)
+                            self.live=session
+                            session.onFailure={ [weak self] error in
+                                self?.liveError=error;self?.player.pause();self?.player.replaceCurrentItem(with:nil)
+                                self?.stopLive();self?.refresh()
+                            }
+                            self.mode.selectedSegment=1;self.videoHolder.isHidden=true
+                            self.scope.stringValue="Experimental source-player latency declaration. Safari/YouTube A/V has not passed verification. No video capture or timeline changes."
+                        } catch { self.liveError=error.localizedDescription;self.stopLive() }
+                        self.refresh()
+                    }
+                } catch { DispatchQueue.main.async {
+                    guard self.virtualAttempt==attempt else { return }
+                    self.virtualPreparing=false;self.liveError=error.localizedDescription;self.refresh()
+                } }
+            }
+        } catch { virtualPreparing=false;liveError=error.localizedDescription;refresh() }
     }
     @objc func runComparison() {
         let selected=cases.indexOfSelectedItem
@@ -283,7 +358,10 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         diagnosticReport["fixturePreparation"]=fixtureStatus
         diagnosticReport["latencyPropagationProbe"]=latencyPropagation
         diagnosticReport["sourcePlayerLatency"]=sourcePlayerLatency
+        diagnosticReport["virtualSourcePlayerLatency"]=virtualSourcePlayerLatency
         diagnosticReport["virtualLatencyProbe"]=virtualLatencyProbe
+        diagnosticReport["virtualOutput"]=virtualRoute?.snapshot ?? lastVirtualRoute
+        diagnosticReport["virtualOutputPreparing"]=virtualPreparing
         diagnosticReport["video"]=controlledVideo.snapshot
         diagnosticReport["comparison"]=measurement?.summary ?? lastMeasurement
         if let item {

@@ -139,7 +139,7 @@ final class BridgeCapture {
     private(set) var appNames:[String]=[]
     private(set) var lastCleanup:[String:Int32]=[:]
 
-    func start(device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool,syncTone:Bool=false) throws {
+    func start(device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool,syncTone:Bool=false,captureDeviceUID:String?=nil) throws {
         stop()
         guard device.channels==2,abs(device.sampleRate-48_000)<1,
               try HAL.channelCount(device.id,scope:kAudioObjectPropertyScopeInput)==0,
@@ -147,7 +147,7 @@ final class BridgeCapture {
         do {
             for app in apps {
                 let d=CATapDescription(stereoMixdownOfProcesses:app.processes)
-                d.isPrivate=true;d.name="Vanille AirPlay experiment";d.deviceUID=device.uid;d.muteBehavior = .unmuted
+                d.isPrivate=true;d.name="Vanille AirPlay experiment";d.deviceUID=captureDeviceUID ?? device.uid;d.muteBehavior = .unmuted
                 var tap:AudioObjectID=0
                 try HAL.check(AudioHardwareCreateProcessTap(d,&tap),"Allow system audio for AirPlay experiment")
                 do { taps.append(BridgeTap(id:app.id,object:tap,uid:try HAL.string(tap,kAudioTapPropertyUID),description:d)) }

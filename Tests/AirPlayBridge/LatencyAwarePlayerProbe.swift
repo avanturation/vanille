@@ -12,6 +12,10 @@ final class LatencyAwarePlayerProbe {
     private let physical:OutputDevice
     private let url:URL
     private let original:AudioObjectID
+    private let useVirtualTiming:Bool
+    private let mainTiming:Bool
+    private var timing:AudioObjectID=0
+    private var previousTiming:UInt32=0
     private let frequency=AudioGetHostClockFrequency()
     private var aggregate:AudioObjectID=0
     private var timer:DispatchSourceTimer?
@@ -24,16 +28,22 @@ final class LatencyAwarePlayerProbe {
     private var phase:[String:Any]=[:]
     private var stopped=false
     private let completion:([String:Any])->Void
-    init(physical:OutputDevice,url:URL,completion:@escaping ([String:Any])->Void) {
+    init(physical:OutputDevice,url:URL,virtualTiming:Bool=false,mainTiming:Bool=false,completion:@escaping ([String:Any])->Void) {
         self.physical=physical;self.url=url;self.completion=completion;original=DeviceManager().defaultOutput()
+        useVirtualTiming=virtualTiming;self.mainTiming=mainTiming
         queue.async { self.beginCase() }
     }
     private func beginCase() {
         let extra=index==0 ? 0.0 : physical.sampleRate*4
-        phase=["configuredExtraFrames":extra];points=[];matches=0;statuses=[]
+        phase=[useVirtualTiming ? "configuredDeviceLatencyFrames" : "configuredExtraFrames":extra];points=[];matches=0;statuses=[]
         do {
             let uid="com.avanturation.Vanille.player-latency.\(UUID().uuidString)"
-            let dictionary:[String:Any]=[kAudioAggregateDeviceNameKey:"Vanille Source Player Probe",kAudioAggregateDeviceUIDKey:uid,kAudioAggregateDeviceIsPrivateKey:true,kAudioAggregateDeviceIsStackedKey:false,kAudioAggregateDeviceMainSubDeviceKey:physical.uid,kAudioAggregateDeviceSubDeviceListKey:[[kAudioSubDeviceUIDKey:physical.uid,kAudioSubDeviceExtraOutputLatencyKey:extra]]]
+            var dictionary:[String:Any]=[kAudioAggregateDeviceNameKey:"Vanille Source Player Probe",kAudioAggregateDeviceUIDKey:uid,kAudioAggregateDeviceIsPrivateKey:true,kAudioAggregateDeviceIsStackedKey:false,kAudioAggregateDeviceMainSubDeviceKey:physical.uid,kAudioAggregateDeviceSubDeviceListKey:[[kAudioSubDeviceUIDKey:physical.uid,kAudioSubDeviceExtraOutputLatencyKey:extra]]]
+            if useVirtualTiming {
+                if timing==0 { timing=try VirtualLatencyOutput.timingDevice();previousTiming=try HAL.read(timing,kAudioDevicePropertyLatency,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput) }
+                try VirtualLatencyOutput.configure(timing,frames:UInt32(extra))
+                dictionary=VirtualLatencyOutput.composition(physical:physical,timing:timing,mainTiming:mainTiming,isPrivate:true,uid:uid)
+            }
             try HAL.check(AudioHardwareCreateAggregateDevice(dictionary as CFDictionary,&aggregate),"Create source player latency probe")
             Thread.sleep(forTimeInterval:0.15)
             phase["safetyOffsetFrames"]=try HAL.read(aggregate,kAudioDevicePropertySafetyOffset,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput)
@@ -63,7 +73,7 @@ final class LatencyAwarePlayerProbe {
     }
     private func finishCase() {
         timer?.cancel();timer=nil
-        phase["commandToSourcePlayerTimeline"]=SyncTrend.summarize(points,warmup:3)
+        phase["commandToSourcePlayerTimeline"]=SyncTrend.summarize(points,warmup:useVirtualTiming ? 7 : 3)
         phase["playerClockMatchesAggregate"]=matches
         phase["clockQueryStatuses"]=statuses.sorted()
         phase["ioTiming"]=probe.mailbox.consume().dictionary(frequency:frequency)
@@ -73,14 +83,21 @@ final class LatencyAwarePlayerProbe {
         rows.append(phase)
         if index==0,!stopped { index=1;beginCase();return }
         stopped=true
-        let report:[String:Any]=["cases":rows,"defaultPreserved":DeviceManager().defaultOutput()==original,"scope":"Unmodified source AVPlayer, synthetic audio, private output only, no timeline correction, no global route change","audioSaved":false,"date":ISO8601DateFormatter().string(from:Date())]
+        let restoreStatus=restoreTiming()
+        let report:[String:Any]=["cases":rows,"defaultPreserved":DeviceManager().defaultOutput()==original,"virtualTiming":useVirtualTiming,"latencyRestoreStatus":restoreStatus,"scope":"Unmodified source AVPlayer, synthetic audio, private output only, no timeline correction, no global route change","audioSaved":false,"date":ISO8601DateFormatter().string(from:Date())]
         DispatchQueue.main.async { self.completion(report) }
     }
     func cancel() {
         queue.sync {
             stopped=true;timer?.cancel();timer=nil;player.pause();player.replaceCurrentItem(with:nil);probe.stop()
             if aggregate != 0 { AudioHardwareDestroyAggregateDevice(aggregate);aggregate=0 }
+            _=restoreTiming()
         }
     }
-    deinit { timer?.cancel();player.pause();probe.stop();if aggregate != 0 { AudioHardwareDestroyAggregateDevice(aggregate) } }
+    private func restoreTiming()->OSStatus {
+        guard timing != 0 else { return noErr }
+        do { try VirtualLatencyOutput.configure(timing,frames:previousTiming);timing=0;return noErr }
+        catch { return (error as? AudioFailure)?.status ?? -1 }
+    }
+    deinit { timer?.cancel();player.pause();probe.stop();if aggregate != 0 { AudioHardwareDestroyAggregateDevice(aggregate) };_=restoreTiming() }
 }

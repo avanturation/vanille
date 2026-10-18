@@ -5,8 +5,8 @@
 <key>CFBundleName</key><string>Vanille Latency Clock</string>
 <key>CFBundleExecutable</key><string>VanilleLatencyClock</string>
 <key>CFBundlePackageType</key><string>BNDL</string>
-<key>CFBundleVersion</key><string>1</string>
-<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleVersion</key><string>2</string>
+<key>CFBundleShortVersionString</key><string>0.1.1</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>LSMinimumSystemVersion</key><string>15.0</string>
 <key>CFPlugInDynamicRegistration</key><false/>

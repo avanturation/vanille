@@ -2,6 +2,19 @@
 set -euo pipefail
 DRIVER_PATH="/Library/Audio/Plug-Ins/HAL/VanilleLatencyClock.driver"
 if [[ -e "$DRIVER_PATH" || -L "$DRIVER_PATH" ]]; then
-  print -u2 "Vanille timing driver already exists. This first-install experiment will not overwrite it."
-  exit 1
+  if [[ -L "$DRIVER_PATH" ]]; then
+    print -u2 "The driver path is a symbolic link. Nothing changed."
+    exit 1
+  fi
+  DRIVER_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$DRIVER_PATH/Contents/Info.plist")"
+  DRIVER_HASH="$(/usr/bin/shasum -a 256 "$DRIVER_PATH/Contents/MacOS/VanilleLatencyClock")"
+  if [[ "$DRIVER_ID" != "com.avanturation.Vanille.LatencyClock" || "${DRIVER_HASH%% *}" != "524f5c283e808a3e3185a1fe16776f650ec1c07ae38676ccd1fdb8177dc36db3" ]]; then
+    print -u2 "An unrecognized driver version already exists. Nothing changed."
+    exit 1
+  fi
+  BACKUP_ROOT="/Library/Audio/Plug-Ins/Vanille Disabled Drivers"
+  /bin/mkdir -p "$BACKUP_ROOT"
+  BACKUP_PATH="$BACKUP_ROOT/VanilleLatencyClock-0.1.0-$(/bin/date +%Y%m%d-%H%M%S).driver"
+  if [[ -e "$BACKUP_PATH" ]]; then exit 1; fi
+  /bin/mv "$DRIVER_PATH" "$BACKUP_PATH"
 fi
