@@ -19,6 +19,8 @@ final class LiveBridgeSession {
     private var errorText=""
     private var validClock=false
     private var playbackFrame=0.0
+    private var playbackHost:UInt64=0
+    private var latestIO=IOTimeSnapshot()
     private var callbackCount:UInt64=0
     private var callbackChangedAt=Date()
     private var lastHardwareCheck=Date.distantPast
@@ -28,13 +30,13 @@ final class LiveBridgeSession {
     var startedItem=false // main thread only
     var onFailure:((String)->Void)?
 
-    init(player:AVPlayer,device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool) throws {
-        self.player=player;self.device=device;testEndsAt=tone ? Date().addingTimeInterval(90) : nil
+    init(player:AVPlayer,device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool,syncTone:Bool=false) throws {
+        self.player=player;self.device=device;testEndsAt=tone ? Date().addingTimeInterval(syncTone ? 150 : 90) : nil
         pcm.initialize(repeating:0,count:4096)
         do {
             try queue.sync {
                 let segments=try LiveSegments(sampleRate:48_000);self.segments=segments
-                try capture.start(device:device,apps:apps,settings:settings,tone:tone)
+                try capture.start(device:device,apps:apps,settings:settings,tone:tone,syncTone:syncTone)
                 callbackChangedAt=Date()
                 let server=MemoryHTTPServer { [weak segments] path in segments?.resource(path) }
                 self.server=server
@@ -50,6 +52,7 @@ final class LiveBridgeSession {
 
     private func tick() {
         guard let context=capture.context,let segments,errorText.isEmpty else { return }
+        latestIO=context.ioTiming.consume()
         do {
             if let testEndsAt,Date()>=testEndsAt { throw AudioFailure(operation:"Timing test finished; original output restored",status:-1) }
             if context.fault.load(ordering:.relaxed) { throw AudioFailure(operation:"Audio format changed; original output restored",status:-1) }
@@ -86,7 +89,8 @@ final class LiveBridgeSession {
                 let head=Double(context.history.published.load(ordering:.acquiring))
                 validClock=playbackFrame>=0 && playbackFrame<head && playbackFrame>head-48_000*40
             }
-            context.clock.publish(PlaybackAnchor(frame:playbackFrame,host:AudioGetCurrentHostTime(),valid:validClock))
+            playbackHost=AudioGetCurrentHostTime()
+            context.clock.publish(PlaybackAnchor(frame:playbackFrame,host:playbackHost,valid:validClock))
             if alignmentRequested && validClock && context.hasSignal && !capture.replaced {
                 try capture.replaceOriginal(true);alignmentRecoveries += 1
             } else if capture.replaced && !validClock { try capture.replaceOriginal(false) }
@@ -108,6 +112,12 @@ final class LiveBridgeSession {
         }
     }
     func setLocalVolume(_ value:Double) { queue.sync { capture.context?.localGain.store(min(1,max(0,value)),ordering:.relaxed) } }
+    func avReference(compensated:Bool)->AVSyncReference {
+        queue.sync {
+            if compensated { return AVSyncReference(seconds:playbackFrame/48_000,host:playbackHost,valid:validClock) }
+            return AVSyncReference(seconds:Double(latestIO.sourceFrame)/48_000,host:latestIO.outputHost,valid:AudioTimeStampFlags(rawValue:latestIO.outputFlags).contains(.hostTimeValid))
+        }
+    }
     func prepareForSeek() {
         queue.sync {
             validClock=false
@@ -130,6 +140,8 @@ final class LiveBridgeSession {
             result["alignmentActivations"]=alignmentRecoveries
             result["playbackClockReady"]=validClock
             result["playbackFrame"]=playbackFrame
+            result["ioTiming"]=latestIO.dictionary(frequency:AudioGetHostClockFrequency())
+            result["encoderQueueMS"]=capture.context.map { Double($0.history.published.load(ordering:.acquiring)-cursor)/48 } ?? 0
             result["bufferedSeconds"]=capture.context.map { (Double($0.history.published.load(ordering:.acquiring))-playbackFrame)/48_000 } ?? 0
             if let http=server?.metrics {
                 result["httpRequests"]=http.requests;result["httpBytes"]=http.bytes

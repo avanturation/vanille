@@ -11,6 +11,7 @@ private struct BridgeTap { let id:String;let object:AudioObjectID;let uid:String
 final class BridgeRender:@unchecked Sendable {
     let history:PCMHistory
     let clock=PlaybackClock()
+    let ioTiming=IOTimingMailbox()
     let mailbox=ParameterMailbox()
     let dsp:StereoDSP
     let sampleRate:Double
@@ -25,6 +26,7 @@ final class BridgeRender:@unchecked Sendable {
     private let signals:[BridgeSignal]
     private let pointers:UnsafeMutablePointer<BridgeChannel>
     private let tone:Bool
+    private let syncTone:Bool
     private let hostFrequency=AudioGetHostClockFrequency()
     private var frameCursor:Int64=0
     private var localPosition:Double = -1
@@ -32,8 +34,9 @@ final class BridgeRender:@unchecked Sendable {
     private var fadeRemaining=0
     private var gain=0.0
 
-    init(rate:Double,mappings:[Int],tone:Bool) {
-        sampleRate=rate;self.mappings=mappings;self.tone=tone
+    init(rate:Double,mappings:[Int],tone:Bool,syncTone:Bool=false) {
+        sampleRate=rate;self.mappings=mappings;self.tone=tone;self.syncTone=syncTone
+        _=SyncCue.starts // Initialize the immutable cue schedule before realtime IO.
         signals=mappings.map { _ in BridgeSignal() }
         history=PCMHistory(sampleRate:rate)
         dsp=StereoDSP(sampleRate:rate,mailbox:mailbox)
@@ -53,12 +56,19 @@ final class BridgeRender:@unchecked Sendable {
         }
         return BridgeChannel()
     }
-    @inline(__always) func render(input:UnsafePointer<AudioBufferList>,output:UnsafeMutablePointer<AudioBufferList>,host:UInt64) {
+    @inline(__always) func render(input:UnsafePointer<AudioBufferList>,output:UnsafeMutablePointer<AudioBufferList>,now:AudioTimeStamp,inputTime:AudioTimeStamp,outputTime:AudioTimeStamp) {
+        let callbackHost=AudioGetCurrentHostTime()
+        let host=outputTime.mHostTime
         let ins=UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating:input)),outs=UnsafeMutableAudioBufferListPointer(output)
         for b in outs { if let data=b.mData { memset(data,0,Int(b.mDataByteSize)) } }
         let left=channel(0,outs),right=channel(1,outs)
         let count=min(left.frames,right.frames)
         guard count>0,count<=16_384,left.data != nil,right.data != nil else { fault.store(true,ordering:.relaxed);return }
+        guard outputTime.mFlags.contains(.hostTimeValid),host>0 else {
+            if localEnabled.load(ordering:.relaxed) { fault.store(true,ordering:.relaxed) }
+            return
+        }
+        ioTiming.publish(IOTimeSnapshot(callbackHost:callbackHost,cycleHost:now.mHostTime,inputHost:inputTime.mHostTime,outputHost:host,outputSample:outputTime.mSampleTime,outputRateScalar:outputTime.mRateScalar,cycleFlags:now.mFlags.rawValue,inputFlags:inputTime.mFlags.rawValue,outputFlags:outputTime.mFlags.rawValue,frames:count,sourceFrame:frameCursor))
         for i in mappings.indices {
             pointers[i*2]=channel(mappings[i],ins);pointers[i*2+1]=channel(mappings[i]+1,ins)
             guard pointers[i*2].frames>=count,pointers[i*2+1].frames>=count else { fault.store(true,ordering:.relaxed);return }
@@ -78,7 +88,7 @@ final class BridgeRender:@unchecked Sendable {
             if tone {
                 let position=frameCursor%Int64(sampleRate*2)
                 let envelope=position<Int64(sampleRate*0.1) ? min(1,Double(position)/240)*min(1,(sampleRate*0.1-Double(position))/240) : 0
-                let pulse=0.02*envelope*sin(2*Double.pi*880*Double(frameCursor)/sampleRate)
+                let pulse=syncTone ? SyncCue.sample(frameCursor,rate:sampleRate) : 0.02*envelope*sin(2*Double.pi*880*Double(frameCursor)/sampleRate)
                 l += pulse;r += pulse
             }
             let sample=dsp.process(left:l,right:r,parameters:p)
@@ -129,7 +139,7 @@ final class BridgeCapture {
     private(set) var appNames:[String]=[]
     private(set) var lastCleanup:[String:Int32]=[:]
 
-    func start(device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool) throws {
+    func start(device:OutputDevice,apps:[AudioApplication],settings:SavedState,tone:Bool,syncTone:Bool=false) throws {
         stop()
         guard device.channels==2,abs(device.sampleRate-48_000)<1,
               try HAL.channelCount(device.id,scope:kAudioObjectPropertyScopeInput)==0,
@@ -160,11 +170,11 @@ final class BridgeCapture {
             for stream in try HAL.objects(aggregate,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeOutput) {
                 guard Self.valid(try HAL.read(stream,kAudioStreamPropertyVirtualFormat,default:AudioStreamBasicDescription())) else { throw AudioFailure(operation:"Unsupported experiment output format",status:kAudioDeviceUnsupportedFormatError) }
             }
-            let c=BridgeRender(rate:48_000,mappings:mappings,tone:tone);context=c
+            let c=BridgeRender(rate:48_000,mappings:mappings,tone:tone,syncTone:syncTone);context=c
             c.mailbox.publish(gains:taps.map { let v=settings.applications[$0.id] ?? AppVolume();return v.muted ? 0 : v.volume },eq:settings.eq,sampleRate:48_000)
-            try HAL.check(AudioDeviceCreateIOProcID(aggregate,{ _,_,input,_,output,time,client in
+            try HAL.check(AudioDeviceCreateIOProcID(aggregate,{ _,now,input,inputTime,output,time,client in
                 guard let client else { return noErr }
-                Unmanaged<BridgeRender>.fromOpaque(client).takeUnretainedValue().render(input:input,output:output,host:time.pointee.mHostTime)
+                Unmanaged<BridgeRender>.fromOpaque(client).takeUnretainedValue().render(input:input,output:output,now:now.pointee,inputTime:inputTime.pointee,outputTime:time.pointee)
                 return noErr
             },Unmanaged.passUnretained(c).toOpaque(),&io),"Create experiment callback")
             try HAL.check(AudioDeviceStart(aggregate,io),"Start live experiment")

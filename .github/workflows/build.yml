@@ -32,5 +32,7 @@ jobs:
         run: ./Scripts/build.sh
       - name: Experimental bridge checks
         run: ./Scripts/test-airplay-bridge.sh
+      - name: A/V clock analysis checks
+        run: ./Scripts/test-avsync.sh
       - name: Experimental native AirPlay bridge
         run: ./Scripts/build-airplay-bridge-lab.sh
