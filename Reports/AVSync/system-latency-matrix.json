@@ -1,0 +1,717 @@
+{
+  "cases" : [
+    {
+      "afterLiveCompositionUpdate" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 50,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "case" : "single-baseline",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        0
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 12.275916666666665,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085113.7307071248,
+        "outputMinusCallbackMS" : 11.640750000000001,
+        "outputMinusCycleMS" : 11.705541666666667,
+        "outputSampleTime" : 21492,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        0
+      ],
+      "running" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 50,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stacked" : false,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 50,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "case" : "single-extra-main",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        192000
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 12.250666666666667,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085115.0911223334,
+        "outputMinusCallbackMS" : 11.665999999999999,
+        "outputMinusCycleMS" : 11.714499999999999,
+        "outputSampleTime" : 20936,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        192000
+      ],
+      "running" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stacked" : false,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "case" : "single-stacked-extra-main",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        192000
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 12.247708333333332,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085116.0657879165,
+        "outputMinusCallbackMS" : 11.668958333333332,
+        "outputMinusCycleMS" : 11.714166666666666,
+        "outputSampleTime" : 20488,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        192000
+      ],
+      "running" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stacked" : true,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192050,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 58,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "case" : "two-baseline",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        0,
+        0
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 12.290083333333333,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085117.3693696251,
+        "outputMinusCallbackMS" : 11.793208333333332,
+        "outputMinusCycleMS" : 11.869333333333334,
+        "outputSampleTime" : 25076,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        0,
+        0
+      ],
+      "running" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 58,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stacked" : false,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 58,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192058,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "case" : "two-extra-main",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        192000,
+        0
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 12.271708333333335,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085118.6428687498,
+        "outputMinusCallbackMS" : 11.644958333333333,
+        "outputMinusCycleMS" : 11.708708333333334,
+        "outputSampleTime" : 24572,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        192000,
+        0
+      ],
+      "running" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192058,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stacked" : false,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 192058,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 58,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "case" : "two-extra-secondary",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        0,
+        192000
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 12.292458333333334,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085119.7664507916,
+        "outputMinusCallbackMS" : 11.790875,
+        "outputMinusCycleMS" : 11.874541666666667,
+        "outputSampleTime" : 21480,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        0,
+        192000
+      ],
+      "running" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 58,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stacked" : false,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.0416666666666667,
+        "avPresentationLatencyMS" : 1.0416666666666667,
+        "deviceLatencyFrames" : 50,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 58,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.25,
+        "avPresentationLatencyMS" : 1.25,
+        "deviceLatencyFrames" : 60,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 48,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "case" : "two-other-clock-extra-primary",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        192000,
+        0
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 13.680875,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085121.0802674168,
+        "outputMinusCallbackMS" : 11.569125,
+        "outputMinusCycleMS" : 11.662125000000001,
+        "outputSampleTime" : 24636,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        192000,
+        0
+      ],
+      "running" : {
+        "auLatencyMS" : 1.25,
+        "avPresentationLatencyMS" : 1.25,
+        "deviceLatencyFrames" : 60,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 48,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stacked" : false,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.25,
+        "avPresentationLatencyMS" : 1.25,
+        "deviceLatencyFrames" : 60,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 48,
+        "streamLatencyFrames" : [
+          0,
+          183
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    },
+    {
+      "afterOwnedSubdeviceWrite" : {
+        "auLatencyMS" : 1.25,
+        "avPresentationLatencyMS" : 1.25,
+        "deviceLatencyFrames" : 60,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 48,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "case" : "two-stacked-extra-primary",
+      "clockStatus" : 0,
+      "configuredExtraFrames" : [
+        192000,
+        0
+      ],
+      "defaultPreserved" : true,
+      "destroyStatus" : 0,
+      "ioProbeCleanup" : {
+        "io" : 0,
+        "stop" : 0
+      },
+      "ioTiming" : {
+        "cycleFlags" : 7,
+        "frames" : 0,
+        "hostTimeValid" : true,
+        "inputAgeAtCallbackMS" : 13.663666666666666,
+        "inputFlags" : 7,
+        "outputFlags" : 7,
+        "outputHostSeconds" : 3085122.3532777498,
+        "outputMinusCallbackMS" : 11.586333333333334,
+        "outputMinusCycleMS" : 11.661541666666666,
+        "outputSampleTime" : 24292,
+        "rateScalar" : 1,
+        "rateScalarValid" : true,
+        "sampleTimeValid" : true,
+        "sourceFrame" : 0
+      },
+      "ownedObjects" : [
+        {
+          "class" : 1634956402,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : false
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        },
+        {
+          "class" : 1634956642,
+          "ownerIsAggregate" : true,
+          "privateSubdevice" : true
+        }
+      ],
+      "ownedSubdeviceExtraReadback" : 192000,
+      "returnedExtraFrames" : [
+        192000,
+        0
+      ],
+      "running" : {
+        "auLatencyMS" : 1.25,
+        "avPresentationLatencyMS" : 1.25,
+        "deviceLatencyFrames" : 60,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 48,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stacked" : true,
+      "startClockStatus" : 0,
+      "stopped" : {
+        "auLatencyMS" : 1.25,
+        "avPresentationLatencyMS" : 1.25,
+        "deviceLatencyFrames" : 60,
+        "latencySettable" : false,
+        "safetyOffsetFrames" : 48,
+        "streamLatencyFrames" : [
+          0
+        ]
+      },
+      "stopStatus" : 0,
+      "validClock" : true
+    }
+  ],
+  "date" : "2026-10-18T06:23:59Z",
+  "defaultPreserved" : true,
+  "fourSecondDeclarationFrames" : 192000,
+  "scope" : "Private aggregate latency declarations, before and while running; no default route change, no audio content, no physical property writes"
+}

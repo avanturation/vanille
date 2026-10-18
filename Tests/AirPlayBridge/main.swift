@@ -39,6 +39,8 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     var syncWAV=Data()
     var fixtureStatus="Preparing owned video"
     var latencyPropagation:[String:Any]=[:]
+    var sourcePlayerLatency:[String:Any]=[:]
+    var sourcePlayerProbe:LatencyAwarePlayerProbe?
     let syncWAVLock=NSLock()
     let controlledVideo=ControlledVideo()
     let videoHolder=NSView()
@@ -71,6 +73,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let before=NSMenuItem(title:"Before Video Compensation",action:#selector(beforeVideo),keyEquivalent:"b");before.target=self;playbackMenu.addItem(before)
         let after=NSMenuItem(title:"Follow Audio for Video",action:#selector(afterVideo),keyEquivalent:"f");after.target=self;playbackMenu.addItem(after)
         let latency=NSMenuItem(title:"Latency Propagation Probe",action:#selector(probeLatency),keyEquivalent:"l");latency.target=self;playbackMenu.addItem(latency)
+        let sourceProbe=NSMenuItem(title:"Source Player Latency Declaration",action:#selector(probeSourcePlayer),keyEquivalent:"Y");sourceProbe.target=self;playbackMenu.addItem(sourceProbe)
         let root = NSStackView(); root.orientation = .vertical; root.alignment = .leading; root.spacing = 12
         let intro = NSTextField(wrappingLabelWithString:"Music Mode routes sound to the selected speakers. Video Mode preserves external players’ original audio. The comparison measures only the supplied test clip.")
         intro.font = .systemFont(ofSize:12)
@@ -180,11 +183,18 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     @objc func beforeVideo() { controlledVideo.setCompensated(false) }
     @objc func afterVideo() { controlledVideo.setCompensated(true) }
     @objc func probeLatency() {
-        guard let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }) else { return }
+        guard let outputs=try? manager.outputs(),let device=outputs.first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        let secondary=outputs.first { $0.transport==kAudioDeviceTransportTypeBuiltIn && $0.channels==2 && $0.id != device.id }
         DispatchQueue.global(qos:.utility).async {
-            let report=HardwareTiming.latencyPropagation(device)
+            let report=SystemLatencyMatrix.run(primary:device,secondary:secondary)
             DispatchQueue.main.async { self.latencyPropagation=report;self.refresh() }
         }
+    }
+    @objc func probeSourcePlayer() {
+        guard let baseURL,fixtureStatus.hasPrefix("Ready"),let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        sourcePlayerProbe?.cancel();sourcePlayerLatency=["status":"Running two 12-second native source-player comparisons"]
+        sourcePlayerProbe=LatencyAwarePlayerProbe(physical:device,url:baseURL.appendingPathComponent("sync.wav")) { [weak self] report in self?.sourcePlayerLatency=report;self?.refresh() }
+        refresh()
     }
     @objc func runComparison() {
         let selected=cases.indexOfSelectedItem
@@ -262,6 +272,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         diagnosticReport["videoMode"]=mode.selectedSegment==1
         diagnosticReport["fixturePreparation"]=fixtureStatus
         diagnosticReport["latencyPropagationProbe"]=latencyPropagation
+        diagnosticReport["sourcePlayerLatency"]=sourcePlayerLatency
         diagnosticReport["video"]=controlledVideo.snapshot
         diagnosticReport["comparison"]=measurement?.summary ?? lastMeasurement
         if let item {
@@ -289,7 +300,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         if let data=try? JSONSerialization.data(withJSONObject:diagnosticReport,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:reportURL,options:.atomic); details.string = String(decoding:data,as:UTF8.self) }
         status.stringValue = "System output: \(current?.name ?? "Unknown") · Player: \(player.timeControlStatus == .playing ? "playing" : "stopped / buffering") · AirPlay destinations detected: \(detector.multipleRoutesDetected ? "yes" : "no")"
     }
-    func applicationWillTerminate(_ notification:Notification) { stop();server?.stop() }
+    func applicationWillTerminate(_ notification:Notification) { sourcePlayerProbe?.cancel();stop();server?.stop() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool { true }
 }
 let app = NSApplication.shared
