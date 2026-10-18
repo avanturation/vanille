@@ -40,6 +40,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
     var fixtureStatus="Preparing owned video"
     var latencyPropagation:[String:Any]=[:]
     var sourcePlayerLatency:[String:Any]=[:]
+    var virtualLatencyProbe:[String:Any]=[:]
     var sourcePlayerProbe:LatencyAwarePlayerProbe?
     let syncWAVLock=NSLock()
     let controlledVideo=ControlledVideo()
@@ -74,6 +75,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let after=NSMenuItem(title:"Follow Audio for Video",action:#selector(afterVideo),keyEquivalent:"f");after.target=self;playbackMenu.addItem(after)
         let latency=NSMenuItem(title:"Latency Propagation Probe",action:#selector(probeLatency),keyEquivalent:"l");latency.target=self;playbackMenu.addItem(latency)
         let sourceProbe=NSMenuItem(title:"Source Player Latency Declaration",action:#selector(probeSourcePlayer),keyEquivalent:"Y");sourceProbe.target=self;playbackMenu.addItem(sourceProbe)
+        let virtualProbe=NSMenuItem(title:"Virtual Output Latency Probe",action:#selector(probeVirtualOutput),keyEquivalent:"L");virtualProbe.target=self;playbackMenu.addItem(virtualProbe)
         let root = NSStackView(); root.orientation = .vertical; root.alignment = .leading; root.spacing = 12
         let intro = NSTextField(wrappingLabelWithString:"Music Mode routes sound to the selected speakers. Video Mode preserves external players’ original audio. The comparison measures only the supplied test clip.")
         intro.font = .systemFont(ofSize:12)
@@ -196,6 +198,14 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         sourcePlayerProbe=LatencyAwarePlayerProbe(physical:device,url:baseURL.appendingPathComponent("sync.wav")) { [weak self] report in self?.sourcePlayerLatency=report;self?.refresh() }
         refresh()
     }
+    @objc func probeVirtualOutput() {
+        guard live == nil,measurement == nil,let device=try? manager.outputs().first(where: { $0.id==manager.defaultOutput() }),!device.isAirPlay else { return }
+        virtualLatencyProbe=["status":"Checking private virtual output; system default stays unchanged"]
+        DispatchQueue.global(qos:.utility).async {
+            let report=VirtualLatencyOutput.probe(physical:device)
+            DispatchQueue.main.async { self.virtualLatencyProbe=report;self.refresh() }
+        }
+    }
     @objc func runComparison() {
         let selected=cases.indexOfSelectedItem
         let labels=["mr4-only","homepod-default","vanille-homepod","full-group"]
@@ -273,6 +283,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         diagnosticReport["fixturePreparation"]=fixtureStatus
         diagnosticReport["latencyPropagationProbe"]=latencyPropagation
         diagnosticReport["sourcePlayerLatency"]=sourcePlayerLatency
+        diagnosticReport["virtualLatencyProbe"]=virtualLatencyProbe
         diagnosticReport["video"]=controlledVideo.snapshot
         diagnosticReport["comparison"]=measurement?.summary ?? lastMeasurement
         if let item {

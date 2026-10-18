@@ -1,0 +1,7 @@
+#!/bin/zsh
+set -euo pipefail
+DRIVER_PATH="/Library/Audio/Plug-Ins/HAL/VanilleLatencyClock.driver"
+if [[ -e "$DRIVER_PATH" || -L "$DRIVER_PATH" ]]; then
+  print -u2 "Vanille timing driver already exists. This first-install experiment will not overwrite it."
+  exit 1
+fi

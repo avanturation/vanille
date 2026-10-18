@@ -1,0 +1,253 @@
+{
+  "checks" : [
+    {
+      "name" : "Native CFPlugIn factory discovery",
+      "passed" : true
+    },
+    {
+      "name" : "Native CFPlugIn instance creation",
+      "passed" : true
+    },
+    {
+      "name" : "Factory rejects another plug-in type",
+      "passed" : true
+    },
+    {
+      "name" : "Factory rejects nil type",
+      "passed" : true
+    },
+    {
+      "name" : "Driver QueryInterface",
+      "passed" : true
+    },
+    {
+      "name" : "IUnknown QueryInterface",
+      "passed" : true
+    },
+    {
+      "name" : "QueryInterface rejects unsupported interface",
+      "passed" : true
+    },
+    {
+      "name" : "QueryInterface handles nil output",
+      "passed" : true
+    },
+    {
+      "name" : "Reference retain\/release balance",
+      "passed" : true
+    },
+    {
+      "name" : "Fake host initialization",
+      "passed" : true
+    },
+    {
+      "name" : "Plug-in publishes one device",
+      "passed" : true
+    },
+    {
+      "name" : "Object ownership",
+      "passed" : true
+    },
+    {
+      "name" : "Device and stream class",
+      "passed" : true
+    },
+    {
+      "name" : "Hidden timing participant",
+      "passed" : true
+    },
+    {
+      "name" : "Cannot become standalone default",
+      "passed" : true
+    },
+    {
+      "name" : "No input stream",
+      "passed" : true
+    },
+    {
+      "name" : "One stereo output stream",
+      "passed" : true
+    },
+    {
+      "name" : "No volume controls to confuse aggregate",
+      "passed" : true
+    },
+    {
+      "name" : "Initial output latency is zero",
+      "passed" : true
+    },
+    {
+      "name" : "Required zero timestamp period",
+      "passed" : true
+    },
+    {
+      "name" : "Standard latency property is read-only",
+      "passed" : true
+    },
+    {
+      "name" : "Standard latency cannot be changed without handshake",
+      "passed" : true
+    },
+    {
+      "name" : "Declared custom control is writable",
+      "passed" : true
+    },
+    {
+      "name" : "Latency request succeeds",
+      "passed" : true
+    },
+    {
+      "name" : "Request sent to host",
+      "passed" : true
+    },
+    {
+      "name" : "Latency remains unchanged until host accepts",
+      "passed" : true
+    },
+    {
+      "name" : "Host can abort without changing latency",
+      "passed" : true
+    },
+    {
+      "name" : "Host-approved change applies",
+      "passed" : true
+    },
+    {
+      "name" : "Input latency remains zero",
+      "passed" : true
+    },
+    {
+      "name" : "Safety offset remains independent",
+      "passed" : true
+    },
+    {
+      "name" : "Repeated equal latency does not restart IO",
+      "passed" : true
+    },
+    {
+      "name" : "Reject implausible latency",
+      "passed" : true
+    },
+    {
+      "name" : "Reject invalid host action",
+      "passed" : true
+    },
+    {
+      "name" : "Host rejection propagates safely",
+      "passed" : true
+    },
+    {
+      "name" : "Reject malformed setter size",
+      "passed" : true
+    },
+    {
+      "name" : "Short read does not overwrite buffer",
+      "passed" : true
+    },
+    {
+      "name" : "Unknown properties are absent",
+      "passed" : true
+    },
+    {
+      "name" : "Invalid elements are absent",
+      "passed" : true
+    },
+    {
+      "name" : "Invalid object fails safely",
+      "passed" : true
+    },
+    {
+      "name" : "Stable device UID and CF ownership",
+      "passed" : true
+    },
+    {
+      "name" : "UID translation",
+      "passed" : true
+    },
+    {
+      "name" : "Interleaved stereo Float32 format",
+      "passed" : true
+    },
+    {
+      "name" : "Same format is accepted",
+      "passed" : true
+    },
+    {
+      "name" : "Unsupported rate cannot silently change clock",
+      "passed" : true
+    },
+    {
+      "name" : "Unknown client cannot start",
+      "passed" : true
+    },
+    {
+      "name" : "Client registration",
+      "passed" : true
+    },
+    {
+      "name" : "IO starts",
+      "passed" : true
+    },
+    {
+      "name" : "Duplicate start is idempotent",
+      "passed" : true
+    },
+    {
+      "name" : "Native write operation in place",
+      "passed" : true
+    },
+    {
+      "name" : "No input capture operation",
+      "passed" : true
+    },
+    {
+      "name" : "Write preserves physical aggregate's buffer",
+      "passed" : true
+    },
+    {
+      "name" : "Null audio buffer rejected",
+      "passed" : true
+    },
+    {
+      "name" : "Wrong stream rejected",
+      "passed" : true
+    },
+    {
+      "name" : "Zero-frame write safe",
+      "passed" : true
+    },
+    {
+      "name" : "Zero timestamp query",
+      "passed" : true
+    },
+    {
+      "name" : "Monotonic timestamp at 48 kHz",
+      "passed" : true
+    },
+    {
+      "name" : "IO stops after duplicate starts",
+      "passed" : true
+    },
+    {
+      "name" : "Client removal",
+      "passed" : true
+    },
+    {
+      "name" : "Stable clock epoch across stops",
+      "passed" : true
+    },
+    {
+      "name" : "100,000 concurrent clock\/configuration calls",
+      "passed" : true
+    },
+    {
+      "name" : "Latency can return to zero",
+      "passed" : true
+    }
+  ],
+  "externalVideoSyncVerified" : false,
+  "installed" : false,
+  "passed" : 61,
+  "physicalAudioVerified" : false,
+  "total" : 61
+}

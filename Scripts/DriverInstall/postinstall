@@ -1,0 +1,7 @@
+#!/bin/zsh
+set -euo pipefail
+DRIVER_PATH="/Library/Audio/Plug-Ins/HAL/VanilleLatencyClock.driver"
+/usr/bin/codesign --verify --strict "$DRIVER_PATH"
+# The approved installation explicitly includes this brief interruption of all Mac audio.
+# launchd restarts the audio service; no kernel extension or security setting is changed.
+/usr/bin/killall -u _coreaudiod coreaudiod || true

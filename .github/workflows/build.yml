@@ -36,3 +36,5 @@ jobs:
         run: ./Scripts/test-avsync.sh
       - name: Experimental native AirPlay bridge
         run: ./Scripts/build-airplay-bridge-lab.sh
+      - name: Isolated AudioServerPlugIn ABI and clock checks
+        run: zsh Scripts/test-latency-driver.sh
