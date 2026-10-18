@@ -1,6 +1,6 @@
 # Architecture
 
-> 별도 다중 AirPlay 브리지의 구조와 영상 싱크 제한은 [EXPERIMENT_AIRPLAY.md](EXPERIMENT_AIRPLAY.md), [AIRPLAY_AV_SYNC.md](AIRPLAY_AV_SYNC.md)에 있습니다. 아래 구조는 변경하지 않은 정식 HAL 앱입니다.
+> 별도 다중 AirPlay 브리지의 구조는 [EXPERIMENT_AIRPLAY.md](EXPERIMENT_AIRPLAY.md), 최신 클록 계측·제어 가능한 영상 보정·외부 영상 제한은 [AV_SYNC_REPORT.md](AV_SYNC_REPORT.md)에 있습니다. 아래 구조는 변경하지 않은 정식 HAL 앱입니다.
 
 ## 범위
 

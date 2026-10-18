@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-18",
+  "codeCommit": "ffa387edab6df6966c56f1d9aeacfb5a0dd557a8",
+  "ciRun": "https://github.com/avanturation/vanille/actions/runs/39102633480",
+  "ci": {
+    "macos15": "success",
+    "macos26": "success",
+    "xcodeProject": "success on both runners",
+    "productionDSPChecks": 63,
+    "pcmHistoryChecks": 7,
+    "aacSegmentChecks": 8,
+    "avSyncAnalysisChecks": 10,
+    "totalPerRunner": 88,
+    "binaryUploads": false
+  },
+  "local": {
+    "architecture": "arm64",
+    "minimumOS": "15.0",
+    "sdk": "27.0",
+    "os": "27.0 (26A428)",
+    "comparisonDurationSeconds": 90,
+    "completedComparisons": ["mr4-only", "homepod-default", "vanille-homepod", "full-group"],
+    "syntheticVideoListenerFeedback": "Full Group selected; user reported flash and beep broadly matched",
+    "physicalPrecisionMeasurement": false,
+    "externalVideoSynchronization": "not implemented / unresolved",
+    "drmPlayback": "not tested",
+    "videoModeUI": "Verified disabled Live System Audio button, no live session, MR4 remained the system output",
+    "musicModeUI": "Verified enabled Live System Audio button on launch; no capture starts automatically",
+    "runtimeGuardNegativeTest": "Automatic review rejected intentionally invoking live capture to test the guard. The UI was instead changed to disable that action in Video Mode; the disabled state was then verified. Direct guard invocation remains untested.",
+    "nativeAACChecks": "8/8 passed inside the native app",
+    "shellAACChecks": "Skipped when native AAC service was unavailable; not counted as passed",
+    "originalProductSources": "Vanille/ and Vanille.xcodeproj unchanged from main",
+    "originalDeliverableArchiveHashes": "Both production archives still match DELIVERABLES.json"
+  }
+}

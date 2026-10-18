@@ -1,0 +1,14 @@
+2026-10-18T06:03:56.0667970Z ** BUILD SUCCEEDED **
+2026-10-18T06:04:18.7797510Z 63 checks passed
+2026-10-18T06:04:34.7343210Z Built /Users/runner/work/vanille/vanille/../Vanille.app
+2026-10-18T06:04:36.0772770Z 7/7 AirPlay bridge checks passed
+2026-10-18T06:04:49.8230440Z 8/8 live segment checks passed
+2026-10-18T06:04:51.7916260Z 10/10 A/V analysis checks passed
+2026-10-18T06:05:14.4881680Z Built /Users/runner/work/vanille/vanille/build/VanilleAirPlayLab.app
+2026-10-18T06:03:55.6050970Z ** BUILD SUCCEEDED **
+2026-10-18T06:04:20.5969270Z 63 checks passed
+2026-10-18T06:04:39.4333820Z Built /Users/runner/work/vanille/vanille/../Vanille.app
+2026-10-18T06:04:41.1949100Z 7/7 AirPlay bridge checks passed
+2026-10-18T06:04:52.7549210Z 8/8 live segment checks passed
+2026-10-18T06:04:54.9427590Z 10/10 A/V analysis checks passed
+2026-10-18T06:05:20.6594920Z Built /Users/runner/work/vanille/vanille/build/VanilleAirPlayLab.app

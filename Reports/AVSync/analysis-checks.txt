@@ -1,0 +1,11 @@
+PASS Fixed latency is not classified as accumulating drift
+PASS Known progressive drift is measured in milliseconds per minute
+PASS Buffer discontinuity is distinguished from oscillator drift
+PASS Non-finite timing samples cannot enter the fit
+PASS Irregular visual cues reject a misleading two-second phase match
+PASS Cue audio has a silent baseline and safe bounds
+PASS Generated audio contains the actual cue signal
+PASS A startup zero host timestamp is rejected even if a device marks its flags valid
+PASS Valid sample and host clocks have a common zero reference
+PASS Clock resets create a new epoch and non-finite sample times are rejected
+10/10 A/V analysis checks passed
