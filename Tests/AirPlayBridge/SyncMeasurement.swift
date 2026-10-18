@@ -84,6 +84,7 @@ final class SyncMeasurement {
             guard row["playerPlaying"] as? Bool == true,let t=row["elapsed"] as? Double else { return nil }
             let object=nested.flatMap { row[$0] as? [String:Any] } ?? row
             if nested=="video",object["settling"] as? Bool == true { return nil }
+            if nested=="video",object["compensated"] as? Bool != true { return nil }
             guard let value=object[key] as? Double else { return nil }
             return TrendPoint(elapsed:t,valueMS:value)
         }

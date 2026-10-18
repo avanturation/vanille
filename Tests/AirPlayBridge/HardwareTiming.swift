@@ -16,16 +16,16 @@ struct IOTimeSnapshot {
     var frames=0
     var sourceFrame:Int64=0
     func dictionary(frequency:Double)->[String:Any] {
-        let hostValid=AudioTimeStampFlags(rawValue:outputFlags).contains(.hostTimeValid)
+        let hostValid=AudioTimeStampFlags(rawValue:outputFlags).contains(.hostTimeValid) && outputHost>0 && callbackHost>0
         var d:[String:Any]=["hostTimeValid":hostValid,"sampleTimeValid":AudioTimeStampFlags(rawValue:outputFlags).contains(.sampleTimeValid),"rateScalarValid":AudioTimeStampFlags(rawValue:outputFlags).contains(.rateScalarValid),"frames":frames,"sourceFrame":sourceFrame,"cycleFlags":cycleFlags,"inputFlags":inputFlags,"outputFlags":outputFlags]
         if outputSample.isFinite { d["outputSampleTime"]=outputSample }
         if outputRateScalar.isFinite { d["rateScalar"]=outputRateScalar }
         if hostValid {
             d["outputMinusCallbackMS"]=(Double(outputHost)-Double(callbackHost))/frequency*1000
-            d["outputMinusCycleMS"]=(Double(outputHost)-Double(cycleHost))/frequency*1000
+            if AudioTimeStampFlags(rawValue:cycleFlags).contains(.hostTimeValid),cycleHost>0 { d["outputMinusCycleMS"]=(Double(outputHost)-Double(cycleHost))/frequency*1000 }
             d["outputHostSeconds"]=Double(outputHost)/frequency
         }
-        if AudioTimeStampFlags(rawValue:inputFlags).contains(.hostTimeValid) { d["inputAgeAtCallbackMS"]=(Double(callbackHost)-Double(inputHost))/frequency*1000 }
+        if AudioTimeStampFlags(rawValue:inputFlags).contains(.hostTimeValid),inputHost>0,callbackHost>0 { d["inputAgeAtCallbackMS"]=(Double(callbackHost)-Double(inputHost))/frequency*1000 }
         return d
     }
 }
@@ -52,34 +52,30 @@ enum HardwareTiming {
     static func latencyPropagation(_ device:OutputDevice)->[String:Any] {
         let original=DeviceManager().defaultOutput()
         var result:[String:Any]=["scope":"Private aggregate property probe; no IO or default route change"]
-        var aggregate:AudioObjectID=0
-        do {
-            let composition:[String:Any]=[kAudioAggregateDeviceNameKey:"Vanille Latency Property Probe",kAudioAggregateDeviceUIDKey:"com.avanturation.Vanille.latency-probe.\(UUID().uuidString)",kAudioAggregateDeviceIsPrivateKey:true,kAudioAggregateDeviceIsStackedKey:false,kAudioAggregateDeviceMainSubDeviceKey:device.uid,kAudioAggregateDeviceSubDeviceListKey:[[kAudioSubDeviceUIDKey:device.uid]]]
-            try HAL.check(AudioHardwareCreateAggregateDevice(composition as CFDictionary,&aggregate),"Create private latency probe")
-            let children=try HAL.objects(aggregate,kAudioAggregateDevicePropertyActiveSubDeviceList)
-            guard let child=children.first else { throw AudioFailure(operation:"No active private subdevice",status:-1) }
-            guard (try HAL.read(child,kAudioObjectPropertyClass,default:UInt32(0)))==kAudioSubDeviceClassID else { throw AudioFailure(operation:"Latency probe did not expose a private subdevice wrapper; no property changed",status:-1) }
-            let writable=HAL.isSettable(child,kAudioSubDevicePropertyExtraLatency,scope:kAudioObjectPropertyScopeOutput)
-            result["extraLatencyWritable"]=writable
-            func read()->[String:Any] {
-                var row:[String:Any]=[:]
+        // Configure separate private aggregates through the documented
+        // composition key. ActiveSubDeviceList may contain physical devices;
+        // it is never safe to assume those IDs are private writable wrappers.
+        for extra in [0.0,device.sampleRate] {
+            var aggregate:AudioObjectID=0
+            let key=extra==0 ? "before" : "oneSecondConfigured"
+            do {
+                let composition:[String:Any]=[kAudioAggregateDeviceNameKey:"Vanille Latency Property Probe",kAudioAggregateDeviceUIDKey:"com.avanturation.Vanille.latency-probe.\(UUID().uuidString)",kAudioAggregateDeviceIsPrivateKey:true,kAudioAggregateDeviceIsStackedKey:false,kAudioAggregateDeviceMainSubDeviceKey:device.uid,kAudioAggregateDeviceSubDeviceListKey:[[kAudioSubDeviceUIDKey:device.uid,kAudioSubDeviceExtraOutputLatencyKey:extra]]]
+                try HAL.check(AudioHardwareCreateAggregateDevice(composition as CFDictionary,&aggregate),"Create private latency probe")
+                // HAL configuration converges asynchronously. This is a
+                // diagnostic worker, never an audio callback or the UI queue.
+                Thread.sleep(forTimeInterval:0.2)
+                var row:[String:Any]=["configuredExtraFrames":extra]
                 row["aggregateLatencyFrames"]=try? HAL.read(aggregate,kAudioDevicePropertyLatency,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput)
-                row["subdeviceExtraFrames"]=try? HAL.read(child,kAudioSubDevicePropertyExtraLatency,default:Double(0),scope:kAudioObjectPropertyScopeOutput)
+                row["streamLatencyFrames"]=((try? HAL.objects(aggregate,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeOutput)) ?? []).compactMap { try? HAL.read($0,kAudioStreamPropertyLatency,default:UInt32(0)) }
+                let children=(try? HAL.objects(aggregate,kAudioAggregateDevicePropertyActiveSubDeviceList)) ?? []
+                row["activeClasses"]=children.compactMap { try? HAL.read($0,kAudioObjectPropertyClass,default:UInt32(0)) }
                 let engine=AVAudioEngine()
                 do { try engine.outputNode.auAudioUnit.setDeviceID(aggregate);row["auOutputLatencyMS"]=engine.outputNode.auAudioUnit.deviceOutputLatency*1000;row["avPresentationLatencyMS"]=engine.outputNode.presentationLatency*1000 }
                 catch { row["queryError"]=error.localizedDescription }
-                return row
-            }
-            result["before"]=read()
-            if writable {
-                let originalExtra=try HAL.read(child,kAudioSubDevicePropertyExtraLatency,default:Double(0),scope:kAudioObjectPropertyScopeOutput)
-                try HAL.write(child,kAudioSubDevicePropertyExtraLatency,value:Double(device.sampleRate),scope:kAudioObjectPropertyScopeOutput)
-                result["afterOneSecondDeclared"]=read()
-                try HAL.write(child,kAudioSubDevicePropertyExtraLatency,value:originalExtra,scope:kAudioObjectPropertyScopeOutput)
-                result["restored"]=read()
-            }
-        } catch { result["error"]=error.localizedDescription }
-        if aggregate != 0 { result["destroyStatus"]=AudioHardwareDestroyAggregateDevice(aggregate) }
+                result[key]=row
+            } catch { result[key]=["error":error.localizedDescription] }
+            if aggregate != 0 { result[key+"DestroyStatus"]=AudioHardwareDestroyAggregateDevice(aggregate) }
+        }
         result["defaultOutputPreserved"]=DeviceManager().defaultOutput()==original
         return result
     }

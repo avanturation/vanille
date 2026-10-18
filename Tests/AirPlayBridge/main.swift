@@ -71,7 +71,7 @@ final class BridgeLabDelegate:NSObject,NSApplicationDelegate {
         let after=NSMenuItem(title:"Follow Audio for Video",action:#selector(afterVideo),keyEquivalent:"f");after.target=self;playbackMenu.addItem(after)
         let latency=NSMenuItem(title:"Latency Propagation Probe",action:#selector(probeLatency),keyEquivalent:"l");latency.target=self;playbackMenu.addItem(latency)
         let root = NSStackView(); root.orientation = .vertical; root.alignment = .leading; root.spacing = 12
-        let intro = NSTextField(wrappingLabelWithString:"Multi-speaker audio experiment. Keep macOS output on MR4. This mode delays sound behind video. Use MR4 for Video restores the original sound immediately.")
+        let intro = NSTextField(wrappingLabelWithString:"Music Mode routes sound to the selected speakers. Video Mode preserves external players’ original audio. The comparison measures only the supplied test clip.")
         intro.font = .systemFont(ofSize:12)
         let picker = AVRoutePickerView(); picker.player = player; picker.setAccessibilityLabel("AirPlay destinations for experimental player")
         let row = NSStackView(views:[picker,button("Play Quiet Pulse",#selector(play)),button("Live Pulse",#selector(livePulse)),button("Live System Audio",#selector(liveSystem)),button("Use MR4 for Video",#selector(stop))]); row.spacing = 8
