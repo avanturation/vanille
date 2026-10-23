@@ -10,6 +10,12 @@ final class OutputProbe {
     let amplitude1000 = Atomic<Double>(0)
     let amplitude440 = Atomic<Double>(0)
     let lastPulseEdge = Atomic<Double>(0)
+    let continuityReference = Atomic<Double>(0)
+    let continuityMinimum = Atomic<Double>(Double.infinity)
+    let continuityLowWindows = Atomic<UInt64>(0)
+    let continuityWindows = Atomic<UInt64>(0)
+    let continuityMaximumGapMS = Atomic<Double>(0)
+    private var previousDelivery:UInt64 = 0
     private var pulseEnergy = 0.0, pulseFrames = 0, pulseWasHigh = false
     private var sampleRate = 48_000.0, secondsPerTick = 1e-9
     private var c1 = 0.0, c2 = 0.0
@@ -44,6 +50,12 @@ final class OutputProbe {
         try HAL.check(AudioDeviceCreateIOProcID(aggregate, { _,_,input,time,_,_,client in
             guard let client else { return noErr }
             let probe = Unmanaged<OutputProbe>.fromOpaque(client).takeUnretainedValue()
+            let now = mach_absolute_time()
+            if probe.previousDelivery != 0 && now>probe.previousDelivery && probe.continuityReference.load(ordering:.relaxed)>0 {
+                let elapsed = Double(now-probe.previousDelivery)*probe.secondsPerTick*1000
+                if elapsed>probe.continuityMaximumGapMS.load(ordering:.relaxed) { probe.continuityMaximumGapMS.store(elapsed,ordering:.relaxed) }
+            }
+            probe.previousDelivery = now
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating:input))
             var sum = 0.0; var samples = 0
             for buffer in buffers {
@@ -78,7 +90,14 @@ final class OutputProbe {
         let x2 = sample+c2*s21-s22; s22 = s21; s21 = x2
         frameCount += 1
         if frameCount == windowFrames {
-            amplitude1000.store(2*sqrt(max(0,s11*s11+s12*s12-c1*s11*s12))/Double(windowFrames),ordering:.relaxed)
+            let amplitude = 2*sqrt(max(0,s11*s11+s12*s12-c1*s11*s12))/Double(windowFrames)
+            amplitude1000.store(amplitude,ordering:.relaxed)
+            let reference = continuityReference.load(ordering:.relaxed)
+            if reference>0 {
+                if amplitude<continuityMinimum.load(ordering:.relaxed) { continuityMinimum.store(amplitude,ordering:.relaxed) }
+                if amplitude<reference*0.9 { continuityLowWindows.wrappingAdd(1,ordering:.relaxed) }
+                continuityWindows.wrappingAdd(1,ordering:.relaxed)
+            }
             amplitude440.store(2*sqrt(max(0,s21*s21+s22*s22-c2*s21*s22))/Double(windowFrames),ordering:.relaxed)
             frameCount = 0; s11 = 0; s12 = 0; s21 = 0; s22 = 0
         }

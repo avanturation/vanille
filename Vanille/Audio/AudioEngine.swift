@@ -37,6 +37,7 @@ final class RenderContext: @unchecked Sendable {
     let outputMixer: OutputMixer
     let timingPulse:TimingPulse
     let signals: [SourceSignal]
+    let telemetry: CallbackTelemetry
     let suppressOutput = Atomic<Bool>(false)
     private let sourcePeaks: UnsafeMutablePointer<Double>
     private let sourceReady: UnsafeMutablePointer<Bool>
@@ -53,6 +54,7 @@ final class RenderContext: @unchecked Sendable {
     init(sampleRate: Double, routes: [RenderRoute], initiallyReady: Bool = true,
          destinations: [RenderRoute] = [RenderRoute(left:0,right:1)]) {
         self.routes = routes
+        telemetry = CallbackTelemetry(sampleRate: sampleRate)
         self.destinations = destinations
         outputMixer = OutputMixer(sampleRate:sampleRate,destinations:destinations.count)
         timingPulse = TimingPulse(sampleRate:sampleRate)
@@ -108,6 +110,7 @@ final class RenderContext: @unchecked Sendable {
             inputPointers[source*2] = channel(routes[source].left, in: inputs)
             inputPointers[source*2+1] = channel(routes[source].right, in: inputs)
             if inputPointers[source*2].frames < frames || inputPointers[source*2+1].frames < frames {
+                telemetry.inputShortfalls.wrappingAdd(1,ordering:.relaxed)
                 fault.store(true, ordering: .relaxed); return
             }
         }
@@ -120,7 +123,7 @@ final class RenderContext: @unchecked Sendable {
                 let l = inputPointers[source*2], r = inputPointers[source*2+1]
                 let gain = dsp.gain(source: source, parameters: p)
                 let a = Double(l.data![frame*l.stride]), b = Double(r.data![frame*r.stride])
-                if !a.isFinite || !b.isFinite { fault.store(true, ordering: .relaxed); continue }
+                if !a.isFinite || !b.isFinite { telemetry.invalidSamples.wrappingAdd(1,ordering:.relaxed); fault.store(true, ordering: .relaxed); continue }
                 inputEnergy += (a*a+b*b)*0.5
                 sourcePeaks[source] = max(sourcePeaks[source],max(abs(a),abs(b)))
                 if sourceReady[source] { left += a*gain; right += b*gain }
@@ -152,9 +155,13 @@ final class RenderContext: @unchecked Sendable {
     }
 }
 
-private let vanilleIOProc: AudioDeviceIOProc = { _, _, input, _, output, _, clientData in
+private let vanilleIOProc: AudioDeviceIOProc = { _, now, input, _, output, outputTime, clientData in
     guard let clientData else { return noErr }
-    Unmanaged<RenderContext>.fromOpaque(clientData).takeUnretainedValue().render(input: input, output: output)
+    let context = Unmanaged<RenderContext>.fromOpaque(clientData).takeUnretainedValue()
+    let buffers = UnsafeMutableAudioBufferListPointer(output)
+    let frames = buffers.first.map { $0.mNumberChannels > 0 ? Int($0.mDataByteSize)/(4*Int($0.mNumberChannels)) : 0 } ?? 0
+    context.telemetry.observe(now:now.pointee,output:outputTime.pointee,frames:frames)
+    context.render(input: input, output: output)
     return noErr
 }
 
@@ -169,12 +176,21 @@ struct EngineMetrics {
     var originalAudioIDs: Set<String> = []
     var outputUIDs: [String] = []
     var outputDelayMS:[Double] = []
+    var callbackGaps: UInt64 = 0
+    var maximumCallbackGapMS: Double = 0
+    var inputShortfalls: UInt64 = 0
+    var sampleDiscontinuities: UInt64 = 0
     var error: String?
 }
 
 /// Owned exclusively by AudioController's serial control queue.
 /// One private aggregate clocks all process taps against the selected physical output.
 final class AudioEngine {
+    let diagnostics: AudioDiagnostics
+    private var loggedGaps: UInt64 = 0
+    private var loggedShortfalls: UInt64 = 0
+    private var loggedDiscontinuities: UInt64 = 0
+    init(diagnostics: AudioDiagnostics = AudioDiagnostics()) { self.diagnostics = diagnostics }
     private var taps: [TapHandle] = []
     private var aggregate: AudioObjectID = 0
     private var ioProc: AudioDeviceIOProcID?
@@ -206,6 +222,7 @@ final class AudioEngine {
             throw AudioFailure(operation: "Processing requires a stereo output at 32–192 kHz", status: kAudioHardwareUnsupportedOperationError)
         }
         do {
+            diagnostics.record("engineStart", "apps=\(apps.count) outputs=\(outputs.count) rate=\(clock.sampleRate)")
             sampleRate = clock.sampleRate
             routedDevices = outputs; routeSettings = outputSettings
             for app in apps {
@@ -218,6 +235,7 @@ final class AudioEngine {
                 description.muteBehavior = .unmuted
                 var tap: AudioObjectID = 0
                 try HAL.check(AudioHardwareCreateProcessTap(description, &tap), "Allow system audio access to process \(app.name)")
+                diagnostics.record("tapCreate")
                 let uid: String
                 do { uid = try HAL.string(tap, kAudioTapPropertyUID) }
                 catch { AudioHardwareDestroyProcessTap(tap); throw error }
@@ -242,6 +260,7 @@ final class AudioEngine {
                 kAudioAggregateDeviceTapAutoStartKey: false
             ]
             try HAL.check(AudioHardwareCreateAggregateDevice(composition as CFDictionary, &aggregate), "Create audio processing output")
+            diagnostics.record("aggregateCreate", "taps=\(taps.count) outputs=\(outputs.count)")
             guard try HAL.strings(aggregate,kAudioAggregateDevicePropertyFullSubDeviceList) == outputs.map(\.uid) else {
                 throw AudioFailure(operation:"Unexpected output stream order. Original audio kept",status:kAudioDeviceUnsupportedFormatError)
             }
@@ -293,14 +312,22 @@ final class AudioEngine {
             try disablePhysicalInputs(count: physicalInputs, total: inputs.count)
             needsRebuild.store(false, ordering: .relaxed)
             for scope in [kAudioObjectPropertyScopeInput, kAudioObjectPropertyScopeOutput] {
-                if let o = HALObservation(aggregate, kAudioDevicePropertyStreamConfiguration, scope: scope, queue: queue, change: { [weak self] in self?.needsRebuild.store(true, ordering: .relaxed) }) { observations.append(o) }
+                if let o = HALObservation(aggregate, kAudioDevicePropertyStreamConfiguration, scope: scope, queue: queue, change: { [weak self] in
+                    self?.diagnostics.record("engineConfigurationNotification", "scope=\(scope)")
+                    self?.needsRebuild.store(true, ordering: .relaxed)
+                }) { observations.append(o) }
             }
             for d in outputs + [device] {
                 for selector in [kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyDeviceIsAlive] {
-                    if let o = HALObservation(d.id, selector, queue: queue, change: { [weak self] in self?.needsRebuild.store(true, ordering: .relaxed) }) { observations.append(o) }
+                    if let o = HALObservation(d.id, selector, queue: queue, change: { [weak self] in
+                        self?.diagnostics.record(selector == kAudioDevicePropertyNominalSampleRate ? "sampleRateNotification" : "deviceAliveNotification")
+                        self?.needsRebuild.store(true, ordering: .relaxed)
+                    }) { observations.append(o) }
                 }
             }
             try HAL.check(AudioDeviceStart(aggregate, ioProc), "Start processing (system audio permission may be required)")
+            diagnostics.record("outputStreamStart")
+            loggedGaps = 0; loggedShortfalls = 0; loggedDiscontinuities = 0
             startedAt = Date(); lastCallbackAt = startedAt; lastCallbackCount = 0
         } catch { stop(); throw error }
     }
@@ -354,6 +381,12 @@ final class AudioEngine {
         if count != lastCallbackCount { lastCallbackAt = Date(); lastCallbackCount = count }
         let timedOut = Date().timeIntervalSince(lastCallbackAt) > 1.5
         let invalid = context.fault.load(ordering: .relaxed) || needsRebuild.load(ordering: .relaxed)
+        let gaps = context.telemetry.gaps.load(ordering:.relaxed)
+        let shortfalls = context.telemetry.inputShortfalls.load(ordering:.relaxed)
+        let discontinuities = context.telemetry.sampleDiscontinuities.load(ordering:.relaxed)
+        if gaps != loggedGaps { diagnostics.record("callbackGap", "count=\(gaps) maxMS=\(context.telemetry.maximumGapMS)"); loggedGaps = gaps }
+        if shortfalls != loggedShortfalls { diagnostics.record("inputBufferShortfall", "count=\(shortfalls)"); loggedShortfalls = shortfalls }
+        if discontinuities != loggedDiscontinuities { diagnostics.record("outputSampleDiscontinuity", "count=\(discontinuities)"); loggedDiscontinuities = discontinuities }
         var result = EngineMetrics(appIDs: active, running: count > 0 && (!active.isEmpty || timingSound), callbacks: count,
             sampleFrames: context.sampleFrames.load(ordering: .relaxed),
             inputRMS: context.inputRMS.load(ordering: .relaxed), outputRMS: context.outputRMS.load(ordering: .relaxed),
@@ -361,6 +394,8 @@ final class AudioEngine {
         if Date().timeIntervalSince(startedAt) > 2 { result.originalAudioIDs = Set(appIDs).subtracting(active) }
         result.outputUIDs = routedDevices.map(\.uid)
         result.outputDelayMS = routeSettings.map(\.delayMS)
+        result.callbackGaps = gaps; result.maximumCallbackGapMS = context.telemetry.maximumGapMS
+        result.inputShortfalls = shortfalls; result.sampleDiscontinuities = discontinuities
         if active.isEmpty && !timingSound && Date().timeIntervalSince(startedAt) > 12 {
             result.error = "No processable audio was received. Original audio is playing. Check audio permission or use Protected Content Bypass."
             stop(); return result
@@ -374,11 +409,13 @@ final class AudioEngine {
         return result
     }
     func stop() {
+        if aggregate != 0 || !taps.isEmpty { diagnostics.record("engineStop", "callbacks=\(context?.callbacks.load(ordering:.relaxed) ?? 0)") }
         observations.removeAll()
         // Stop the reader first: mutedWhenTapped restores the original output before teardown.
         var callbackDestroyed = true
         if aggregate != 0, let ioProc {
             let status = AudioDeviceStop(aggregate, ioProc)
+            diagnostics.record("outputStreamStop", "status=\(status)")
             if status != noErr {
                 context?.suppressOutput.store(true,ordering:.relaxed)
                 for tap in taps {
@@ -394,6 +431,7 @@ final class AudioEngine {
         ioProc = nil
         if aggregate != 0 {
             let destroyed = AudioHardwareDestroyAggregateDevice(aggregate)
+            diagnostics.record("aggregateDestroy", "status=\(destroyed)")
             if destroyed != noErr {
                 NSLog("Vanille aggregate teardown status: %d",destroyed)
                 if !callbackDestroyed, let context {
@@ -407,6 +445,7 @@ final class AudioEngine {
         }
         for tap in taps {
             let status = AudioHardwareDestroyProcessTap(tap.object)
+            diagnostics.record("tapDestroy", "status=\(status)")
             if status != noErr { NSLog("Vanille tap teardown status: %d",status) }
         }
         taps.removeAll()
@@ -420,7 +459,8 @@ final class AudioEngine {
 
 final class AudioController: @unchecked Sendable {
     let queue = DispatchQueue(label: "com.avanturation.Vanille.audio-control", qos: .userInitiated)
-    private let engine = AudioEngine()
+    let diagnostics = AudioDiagnostics()
+    private let engine: AudioEngine
     private var signature = ""
     private var lastError: String?
     private var failedSignature: String?
@@ -428,6 +468,7 @@ final class AudioController: @unchecked Sendable {
     private var currentMetrics = EngineMetrics()
 
     init() {
+        engine = AudioEngine(diagnostics:diagnostics)
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now()+0.25, repeating: 0.25)
         timer.setEventHandler { [weak self] in
@@ -477,6 +518,7 @@ final class AudioController: @unchecked Sendable {
             }
             if desired == failedSignature { return }
             if desired != signature {
+                diagnostics.record("routingRebuild", "apps=\(candidates.count) outputs=\(destinations.count)")
                 engine.stop(); signature = ""
                 do {
                     try engine.start(apps: candidates, device: output!, outputs:destinations, routes:routes, settings: state, queue: queue)

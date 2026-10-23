@@ -13,7 +13,7 @@ SOURCES=("$PROJECT_DIR"/Vanille/**/*.swift)
 EXTRA_FLAGS=()
 if [[ "${VANILLE_DIAGNOSTICS:-0}" == "1" ]]; then
   EXTRA_FLAGS=(-D VANILLE_DIAGNOSTICS)
-  SOURCES+=("$PROJECT_DIR/Tests/Live/LiveVerification.swift")
+  SOURCES+=("$PROJECT_DIR"/Tests/Live/*.swift)
 fi
 xcrun swiftc -O -whole-module-optimization -swift-version 5 \
   -target arm64-apple-macos15.0 -sdk "$SDK_PATH" \

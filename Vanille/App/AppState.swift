@@ -52,9 +52,13 @@ final class AppState {
         self.store = store; saved = store.load(); notice = store.loadWarning
     }
     func start() {
-        for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultOutputDevice,
+        for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyDefaultSystemOutputDevice,
                          kAudioHardwarePropertyProcessObjectList, kAudioHardwarePropertyServiceRestarted] {
             if let observation = HALObservation(HAL.system, selector, queue: .main, change: { [weak self] in
+                let kind = selector == kAudioHardwarePropertyProcessObjectList ? "processListNotification" :
+                    selector == kAudioHardwarePropertyDefaultSystemOutputDevice ? "systemEffectsOutputNotification" :
+                    selector == kAudioHardwarePropertyDefaultOutputDevice ? "mediaOutputNotification" : "hardwareNotification"
+                self?.audio.diagnostics.record(kind)
                 self?.refresh(retry: selector == kAudioHardwarePropertyServiceRestarted)
             }) {
                 observations.append(observation)

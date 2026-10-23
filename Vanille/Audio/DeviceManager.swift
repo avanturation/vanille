@@ -33,6 +33,9 @@ final class DeviceManager {
     func defaultOutput() -> AudioObjectID {
         (try? HAL.read(HAL.system, kAudioHardwarePropertyDefaultOutputDevice, default: AudioObjectID(0))) ?? 0
     }
+    func defaultSystemOutput() -> AudioObjectID {
+        (try? HAL.read(HAL.system,kAudioHardwarePropertyDefaultSystemOutputDevice,default:AudioObjectID(0))) ?? 0
+    }
     func select(_ device: OutputDevice) throws {
         try HAL.write(HAL.system, kAudioHardwarePropertyDefaultOutputDevice, value: device.id)
     }
