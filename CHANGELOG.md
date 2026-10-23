@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — development candidate
+
+- Fix short system sounds and new audio processes restarting the entire output session. Keep existing physical outputs running and attach independent process readers.
+- Preserve application gain, global EQ, per-device gain and automatic output alignment. Helper readers share their parent application's saved level.
+- Add bounded input handoff, per-reader fail-open recovery, and callback-safe clock/underrun instrumentation. Distinguish media and system-effects default devices.
+- Add actual three-route continuity tests, helper-process churn, effects-route changes, and concurrent buffer safety coverage. See AUDIO_DROPOUT_REPORT.md for measured results and remaining qualification.
+
 ## 0.2.0 — development candidate
 
 - Restore the direct Core Audio baseline, keeping later multi-AirPlay and virtual-output work on a separate branch.

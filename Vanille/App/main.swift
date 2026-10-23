@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var verification: LiveVerification?
     private var routingVerification:RoutingVerification?
     private var continuityVerification:ContinuityVerification?
+    private var playbackObservation:PlaybackObservation?
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -45,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle:"Run Audio Verification…",action:#selector(runVerification),keyEquivalent:"t").target = self
         appMenu.addItem(withTitle:"Run Multi-Output Verification…",action:#selector(runRoutingVerification),keyEquivalent:"r").target = self
         appMenu.addItem(withTitle:"Run Continuity Verification…",action:#selector(runContinuityVerification),keyEquivalent:"j").target = self
+        appMenu.addItem(withTitle:"Observe Playback…",action:#selector(observePlayback),keyEquivalent:"o").target = self
         appMenu.addItem(withTitle:"Toggle Test Appearance",action:#selector(toggleTestAppearance),keyEquivalent:"d").target = self
         #endif
         appMenu.addItem(.separator())
@@ -92,6 +94,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func runContinuityVerification() {
         popover.performClose(nil)
         continuityVerification = ContinuityVerification(state:state); continuityVerification?.show()
+    }
+    @objc private func observePlayback() {
+        popover.performClose(nil)
+        playbackObservation = PlaybackObservation(state:state); playbackObservation?.show()
     }
     @objc private func toggleTestAppearance() {
         let appearance = NSApp.appearance?.name == .darkAqua ? nil : NSAppearance(named:.darkAqua)

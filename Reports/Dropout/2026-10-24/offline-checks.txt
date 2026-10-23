@@ -1,0 +1,73 @@
+PASS: EQ bypass is unity
+PASS: 70% gain changes actual PCM amplitude
+PASS: Mute produces zero PCM after gain ramp
+PASS: Restored out-of-range app levels cannot amplify above 100 percent
+PASS: Invalid negative gain cannot invert or amplify audio
+PASS: 1 kHz +6 dB peaking filter
+PASS: App gain and EQ work in the same DSP pipeline
+PASS: Disabling EQ restores dry signal
+PASS: 44100 Hz / 32 Hz cut
+PASS: 44100 Hz / 64 Hz cut
+PASS: 44100 Hz / 125 Hz cut
+PASS: 44100 Hz / 250 Hz cut
+PASS: 44100 Hz / 500 Hz cut
+PASS: 44100 Hz / 1000 Hz cut
+PASS: 44100 Hz / 2000 Hz cut
+PASS: 44100 Hz / 4000 Hz cut
+PASS: 44100 Hz / 8000 Hz cut
+PASS: 44100 Hz / 16000 Hz cut
+PASS: 48000 Hz / 32 Hz cut
+PASS: 48000 Hz / 64 Hz cut
+PASS: 48000 Hz / 125 Hz cut
+PASS: 48000 Hz / 250 Hz cut
+PASS: 48000 Hz / 500 Hz cut
+PASS: 48000 Hz / 1000 Hz cut
+PASS: 48000 Hz / 2000 Hz cut
+PASS: 48000 Hz / 4000 Hz cut
+PASS: 48000 Hz / 8000 Hz cut
+PASS: 48000 Hz / 16000 Hz cut
+PASS: 96000 Hz / 32 Hz cut
+PASS: 96000 Hz / 64 Hz cut
+PASS: 96000 Hz / 125 Hz cut
+PASS: 96000 Hz / 250 Hz cut
+PASS: 96000 Hz / 500 Hz cut
+PASS: 96000 Hz / 1000 Hz cut
+PASS: 96000 Hz / 2000 Hz cut
+PASS: 96000 Hz / 4000 Hz cut
+PASS: 96000 Hz / 8000 Hz cut
+PASS: 96000 Hz / 16000 Hz cut
+PASS: Boosted EQ has headroom and bounded output
+PASS: Gain transitions use a 10 ms ramp
+PASS: HAL callback mixes per-app interleaved and planar PCM correctly
+PASS: Valid buffers produce no realtime fault
+PASS: Truncated buffers fail safely with zero output
+PASS: Unconfirmed capture never replaces original output
+PASS: Short captured sounds stay latched across later silent callbacks
+PASS: Only confirmed sources enter the output mix
+PASS: Input bridge accepts a bounded native block
+PASS: Input bridge accepts a bounded native block
+PASS: An absent/new input never interrupts another input's PCM or EQ history
+PASS: Steady carrier has zero bridge underruns
+PASS: Reassigning a slot leaves the other source continuous
+PASS: An overrun rejects new data instead of overwriting a reader's samples
+PASS: Rejected input cannot corrupt queued stereo PCM
+PASS: Nonfinite source PCM is never published to the common EQ/mixer
+PASS: Concurrent capture/output threads preserve 128000 ordered stereo frames across wraps
+PASS: Per-device 120 ms offset delays actual PCM by exactly 5760 frames
+PASS: Independent output volumes change only their own PCM stream
+PASS: Per-output delay preserves stereo channel polarity and level
+PASS: Muting one output leaves another output playing
+PASS: Delay changes crossfade over 30 ms without a discontinuous jump
+PASS: Reported HomePod stream latency produces an actual wired-delay target
+PASS: Unknown or excessive device latency never becomes a fabricated timing match
+PASS: System AirPlay route follows reconnecting public endpoint without retaining stale UID
+PASS: Ambiguous AirPlay endpoints are never silently treated as the same speaker
+PASS: Timing sound emits a bounded 100 ms pulse every four seconds
+PASS: Stopping the timing sound fades its generator to silence
+PASS: Persistent settings round-trip by Bundle ID and Device UID
+PASS: Output groups retain independent volume, mute and millisecond offsets
+PASS: Settings without groups use real output discovery instead of assumed speaker models
+PASS: Diagnostic timing overrides never restart after a crash or relaunch
+PASS: Corrupt settings recover to safe defaults
+PASS: Triple-buffer parameter snapshots remain coherent under concurrent updates
+72 checks passed

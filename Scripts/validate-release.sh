@@ -16,7 +16,7 @@ APP_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$
 [[ -f "$CHECK_APP/Contents/Resources/LICENSE.txt" ]]
 [[ ! -d "$CHECK_APP/Contents/Frameworks" && ! -d "$CHECK_APP/Contents/PlugIns" ]]
 strings "$CHECK_APP/Contents/MacOS/Vanille" > "$CHECK_ROOT/binary-strings.txt"
-if rg -q 'Run Audio Verification|Run Multi-Output Verification|Vanille Video Output|Native Stream Checks' "$CHECK_ROOT/binary-strings.txt"; then
+if rg -q 'Run Audio Verification|Run Multi-Output Verification|Run Continuity Verification|Observe Playback|Vanille Video Output|Native Stream Checks' "$CHECK_ROOT/binary-strings.txt"; then
     print -u2 "Development-only menus or the virtual-output experiment leaked into the release"; exit 1
 fi
 print "PASS: arm64, macOS 15+, menu bar app, resolved version $APP_VERSION, license, strict archive signature, no diagnostic or virtual-output bundle"

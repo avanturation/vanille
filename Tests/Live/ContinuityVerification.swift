@@ -11,7 +11,8 @@ final class ContinuityVerification: NSObject {
     let root = URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     private let toneID = "com.avanturation.Vanille.TestTone"
     private let otherID = "com.avanturation.Vanille.TestToneB"
-    private let pulseID = "com.avanturation.Vanille.TestPulse"
+    private let pulseID = "com.avanturation.Vanille.TestTransient"
+    private let helperID = "com.avanturation.Vanille.TestTone.Helper"
     private var window:NSWindow!
     private let log = NSTextView()
     private var mode: NSPopUpButton!
@@ -26,6 +27,15 @@ final class ContinuityVerification: NSObject {
     private var timeout:DispatchWorkItem?
     private var running = false
     private var currentMode = "current"
+    private var baselineCarrierUnderruns:UInt64 = 0
+    private var baselineCarrierOverruns:UInt64 = 0
+    private var baselineOutputGaps:UInt64 = 0
+    private var baselineDiscontinuities:UInt64 = 0
+    private var effectsAlternate:AudioObjectID = 0
+    private var effectsSwitches = 0
+    private var effectsSharedWithMedia = false
+    private var carrierProcess:AudioObjectID = 0
+    private var helperGrouped = false
     init(state:AppState) { self.state = state; original = state.saved; super.init() }
     func show() {
         window = NSWindow(contentRect:NSRect(x:0,y:0,width:720,height:430),styleMask:[.titled,.closable],backing:.buffered,defer:false)
@@ -112,6 +122,11 @@ final class ContinuityVerification: NSObject {
             probe.continuityReference.store(reference,ordering:.relaxed)
         }
         monitoringSequence = state.audio.diagnostics.snapshot().last?.sequence ?? 0
+        carrierProcess = state.applications.first(where: { $0.id==toneID })?.processes.first ?? 0
+        baselineCarrierUnderruns = state.metrics.processUnderruns[carrierProcess] ?? 0
+        baselineCarrierOverruns = state.metrics.processOverruns[carrierProcess] ?? 0
+        baselineOutputGaps = state.metrics.callbackGaps
+        baselineDiscontinuities = state.metrics.sampleDiscontinuities
         state.audio.diagnostics.record("continuityMonitoringStart")
         append("Monitoring \(outputs.count) hardware output(s). EQ +3 dB and app gain 70% remain active.")
         perform(0)
@@ -121,22 +136,42 @@ final class ContinuityVerification: NSObject {
         guard index<12 else { finish(error:nil); return }
         let names = ["Second app starts","Second app exits","System alert","Short-effect process starts","Short-effect process exits","System alert"]
         let stage = index%6
-        stages.append(["event":names[stage],"hostTime":mach_absolute_time()])
-        state.audio.diagnostics.record("continuityStimulus", "index=\(index) \(names[stage])")
-        append("\(index+1)/12 \(names[stage])")
+        let name = index==6 ? "Existing app helper starts" : index==7 ? "Existing app helper exits" : names[stage]
+        stages.append(["event":name,"hostTime":mach_absolute_time()])
+        state.audio.diagnostics.record("continuityStimulus", "index=\(index) \(name)")
+        append("\(index+1)/12 \(name)")
         if stage==0 || stage==3 {
-            openFixture(stage==0 ? "VanilleTestToneB.app" : "VanilleTestPulse.app") {
+            // 440 Hz is orthogonal to the 1 kHz carrier in each 50 ms analysis
+            // window. A second 1 kHz tone could cancel it without any dropout.
+            openFixture(index==6 ? "VanilleTestTone.app/Contents/Helpers/VanilleHelper.app" : stage==0 ? "VanilleTestToneB.app" : "VanilleTestTransient.app") {
+                if index==6 {
+                    self.state.refresh()
+                    self.helperGrouped = (self.state.applications.first(where: { $0.id==self.toneID })?.processes.count ?? 0)>=2
+                }
                 DispatchQueue.main.asyncAfter(deadline:.now()+1.5) { self.perform(index+1) }
             }
         } else {
             if stage==1 || stage==4 {
-                for app in NSRunningApplication.runningApplications(withBundleIdentifier:stage==1 ? otherID : pulseID) { app.terminate() }
-            } else { AudioServicesPlayAlertSound(kSystemSoundID_UserPreferredAlert) }
+                for app in NSRunningApplication.runningApplications(withBundleIdentifier:index==7 ? helperID : stage==1 ? otherID : pulseID) { app.terminate() }
+            } else {
+                if index==2 {
+                    let candidates = self.state.routingOutputs.filter { $0.id != self.originalSystemDefault }.sorted { ($0.id==self.originalDefault ? 0 : 1)<($1.id==self.originalDefault ? 0 : 1) }
+                    if let alternate = candidates.first(where: {
+                        (try? HAL.read($0.id,kAudioDevicePropertyDeviceCanBeDefaultSystemDevice,default:UInt32(0),scope:kAudioObjectPropertyScopeOutput)) == 1
+                    }), (try? HAL.write(HAL.system,kAudioHardwarePropertyDefaultSystemOutputDevice,value:alternate.id)) != nil {
+                        self.effectsAlternate = alternate.id; self.effectsSwitches += 1
+                        self.effectsSharedWithMedia = alternate.id==self.originalDefault
+                        self.state.audio.diagnostics.record("testSystemEffectsRouteChanged","mediaDefaultPreserved=\(self.state.devices.defaultOutput()==self.originalDefault)")
+                    }
+                } else if index==8 { self.restoreEffectsRoute() }
+                AudioServicesPlayAlertSound(kSystemSoundID_UserPreferredAlert)
+            }
             DispatchQueue.main.asyncAfter(deadline:.now()+2) { self.perform(index+1) }
         }
     }
     private func finish(error:String?) {
         guard running else { return }; running = false; timeout?.cancel()
+        restoreEffectsRoute()
         for probe in probes { probe.continuityReference.store(0,ordering:.relaxed) }
         let timeline = state.audio.diagnostics.snapshot().filter { $0.sequence>monitoringSequence }
         let measurements = probes.map { probe -> [String:Any] in
@@ -154,19 +189,38 @@ final class ContinuityVerification: NSObject {
         var paused = state.saved; paused.processingPaused = true; paused.timingSound = false
         state.applyVerificationState(paused); state.audio.stopSynchronously()
         for probe in probes { probe.stop() }
-        for id in [toneID,otherID,pulseID] { for app in NSRunningApplication.runningApplications(withBundleIdentifier:id) { app.terminate() } }
+        for id in [toneID,otherID,pulseID,helperID] { for app in NSRunningApplication.runningApplications(withBundleIdentifier:id) { app.terminate() } }
         DispatchQueue.main.asyncAfter(deadline:.now()+1) {
             let taps = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyTapList)) ?? []).count
             let devices = ((try? HAL.objects(HAL.system,kAudioHardwarePropertyDevices)) ?? []).count
             let cleanup = taps==self.originalTapCount && devices==self.originalDeviceCount
-            let eventsData = (try? JSONEncoder().encode(timeline)) ?? Data("[]".utf8)
+            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+            let eventsData = (try? encoder.encode(timeline)) ?? Data("[]".utf8)
             let events = (try? JSONSerialization.jsonObject(with:eventsData)) ?? []
-            let report:[String:Any] = ["mode":self.currentMode,"date":ISO8601DateFormatter().string(from:Date()),"error":error ?? "","outputs":self.outputs.map { $0.isAirPlay ? "System AirPlay" : "Wired/physical" },"mediaAndSystemEffectsSameDevice":self.originalDefault==self.originalSystemDefault,"mediaDefaultUnchanged":mediaKept,"systemEffectsDefaultUnchanged":effectsKept,"outputRestartsDuringCarrier":restarts,"outputStopsDuringCarrier":stops,"signalPass":signalPass,"measurements":measurements,"events":events,"stimuli":self.stages,"engineCallbackGaps":metrics.callbackGaps,"maximumEngineCallbackGapMS":metrics.maximumCallbackGapMS,"inputBufferShortfalls":metrics.inputShortfalls,"outputSampleDiscontinuities":metrics.sampleDiscontinuities,"resourcesCleaned":cleanup,"allPassed":error==nil && signalPass && restarts==0 && stops==0 && mediaKept && effectsKept && cleanup,"scope":"Independent HAL stream readback of quiet native fixtures, with real system-alert requests. Not an acoustic measurement, actual messenger send or browser-video qualification."]
+            var report:[String:Any] = ["mode":self.currentMode,"date":ISO8601DateFormatter().string(from:Date()),"error":error ?? "","outputs":self.outputs.map { $0.isAirPlay ? "System AirPlay" : "Wired/physical" },"mediaAndSystemEffectsSameDevice":self.originalDefault==self.originalSystemDefault,"mediaDefaultUnchanged":mediaKept,"systemEffectsDefaultUnchanged":effectsKept,"outputRestartsDuringCarrier":restarts,"outputStopsDuringCarrier":stops,"signalPass":signalPass,"measurements":measurements,"events":events,"stimuli":self.stages,"engineCallbackGaps":metrics.callbackGaps,"maximumEngineCallbackGapMS":metrics.maximumCallbackGapMS,"inputBufferShortfalls":metrics.inputShortfalls,"outputSampleDiscontinuities":metrics.sampleDiscontinuities,"resourcesCleaned":cleanup,"allPassed":error==nil && signalPass && restarts==0 && stops==0 && mediaKept && effectsKept && cleanup,"scope":"Independent HAL stream readback of quiet native fixtures, with real system-alert requests. Not an acoustic measurement, actual messenger send or browser-video qualification."]
+            report["carrierRingUnderrunsDuringMonitoring"] = (metrics.processUnderruns[self.carrierProcess] ?? 0) &- self.baselineCarrierUnderruns
+            report["carrierRingOverrunsDuringMonitoring"] = (metrics.processOverruns[self.carrierProcess] ?? 0) &- self.baselineCarrierOverruns
+            report["carrierQueuedFrames"] = metrics.processQueuedFrames[self.carrierProcess] ?? []
+            report["outputGapsDuringMonitoring"] = metrics.callbackGaps &- self.baselineOutputGaps
+            report["outputSampleDiscontinuitiesDuringMonitoring"] = metrics.sampleDiscontinuities &- self.baselineDiscontinuities
+            report["systemEffectsRouteChangesTested"] = self.effectsSwitches
+            report["systemEffectsSharedMediaOutputTested"] = self.effectsSharedWithMedia
+            report["helperGroupedWithCarrier"] = self.helperGrouped
+            let ringOK = (metrics.processUnderruns[self.carrierProcess] ?? 0)==self.baselineCarrierUnderruns && (metrics.processOverruns[self.carrierProcess] ?? 0)==self.baselineCarrierOverruns
+            let clockOK = metrics.callbackGaps==self.baselineOutputGaps && metrics.sampleDiscontinuities==self.baselineDiscontinuities
+            report["allPassed"] = (report["allPassed"] as? Bool == true) && ringOK && clockOK && self.helperGrouped
             if let data = try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]) {
                 try? data.write(to:self.root.appendingPathComponent("build/continuity-\(self.currentMode).json"),options:.atomic)
             }
             self.state.applyVerificationState(self.original)
             self.append("\(report["allPassed"] as? Bool == true ? "PASS" : "FAIL"): restarts=\(restarts), stops=\(stops), signal=\(signalPass), cleanup=\(cleanup). \(error ?? "")\nOriginal settings restored; fixtures stopped.")
+        }
+    }
+    private func restoreEffectsRoute() {
+        guard effectsAlternate != 0, state.devices.defaultSystemOutput()==effectsAlternate else { return }
+        if (try? HAL.write(HAL.system,kAudioHardwarePropertyDefaultSystemOutputDevice,value:originalSystemDefault)) != nil {
+            effectsAlternate = 0; effectsSwitches += 1
+            state.audio.diagnostics.record("testSystemEffectsRouteRestored")
         }
     }
 }

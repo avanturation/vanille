@@ -4,14 +4,16 @@ A native macOS menu bar audio controller. Swift, AppKit and public Core Audio AP
 
 **Development preview.** The restored direct Core Audio path is the baseline: wired output plus **one macOS system AirPlay connection**. App volume and EQ are real PCM processing. Multiple independent HomePod connections, automatic AirPlay connection and the experimental virtual output are outside this release.
 
-The latest restoration and actual test scope are in [RESTORATION_REPORT.md](RESTORATION_REPORT.md). The user confirmed that the restored wired + one AirPlay path matches video. Keeping MR4 literally selected as the macOS default while retaining AirPlay did not pass the latest native test: macOS removed that AirPlay endpoint. Do not confuse the successful two-speaker playback with that separate requirement.
+The latest dropout fix and actual test scope are in [AUDIO_DROPOUT_REPORT.md](AUDIO_DROPOUT_REPORT.md). Version **0.2.1** keeps the physical output session running when audio processes start or exit. Native continuity tests passed on wired, one system AirPlay, and their combined output. EQ and application gain remain in the existing DSP path.
+
+The earlier restoration is documented in [RESTORATION_REPORT.md](RESTORATION_REPORT.md). The user confirmed that that wired + one AirPlay path matches video. Keeping MR4 literally selected as the macOS default while retaining AirPlay did not pass: macOS removed the AirPlay endpoint. The current fix does not claim to resolve that separate connection limitation.
 
 ## Build and run
 
 Requirements: Apple Silicon, macOS 15+, Swift 6 / Xcode 16 or newer command line tools. macOS 27 is the current hardware test environment. Liquid Glass requires a build made with SDK 26+ and macOS 26+; other supported builds use native popover material.
 
 ```sh
-git clone --branch restore/low-latency-native-ui https://github.com/avanturation/vanille.git
+git clone --branch fix/continuous-audio-process-churn https://github.com/avanturation/vanille.git
 cd vanille
 ./Scripts/build.sh
 open build/Vanille.app

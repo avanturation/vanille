@@ -14,5 +14,6 @@ xcrun swiftc -O -swift-version 5 -target arm64-apple-macos15.0 \
   "$PROJECT_DIR/Vanille/Audio/HAL.swift" \
   "$PROJECT_DIR/Vanille/Audio/AudioEngine.swift" \
   "$PROJECT_DIR/Vanille/Audio/AudioDiagnostics.swift" \
+  "$PROJECT_DIR/Vanille/Audio/CaptureSlot.swift" \
   "$PROJECT_DIR/Tests/Offline/main.swift" -o "$BUILD_DIR/VanilleTests"
 "$BUILD_DIR/VanilleTests"

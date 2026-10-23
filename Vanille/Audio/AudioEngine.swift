@@ -3,13 +3,6 @@ import CoreAudio
 import AudioToolbox
 import Synchronization
 
-private struct TapHandle {
-    let appID: String
-    let object: AudioObjectID
-    let uid: String
-    let description: CATapDescription
-}
-
 final class SourceSignal: @unchecked Sendable {
     let peak = Atomic<Double>(0)
     let capturedSignal = Atomic<Bool>(false)
@@ -38,6 +31,10 @@ final class RenderContext: @unchecked Sendable {
     let timingPulse:TimingPulse
     let signals: [SourceSignal]
     let telemetry: CallbackTelemetry
+    let captureSlots:[CaptureSlot]
+    private let captureScratch:UnsafeMutablePointer<Float>?
+    private let captureBuffers:UnsafeMutableAudioBufferListPointer?
+    private let capturePhaseGuard:Int
     let suppressOutput = Atomic<Bool>(false)
     private let sourcePeaks: UnsafeMutablePointer<Double>
     private let sourceReady: UnsafeMutablePointer<Bool>
@@ -52,8 +49,19 @@ final class RenderContext: @unchecked Sendable {
     static let maximumFrames = 16_384
 
     init(sampleRate: Double, routes: [RenderRoute], initiallyReady: Bool = true,
-         destinations: [RenderRoute] = [RenderRoute(left:0,right:1)]) {
+         destinations: [RenderRoute] = [RenderRoute(left:0,right:1)], bufferedCapture:Bool = false, capturePhaseGuard:Int = 0) {
         self.routes = routes
+        self.capturePhaseGuard = capturePhaseGuard
+        if bufferedCapture {
+            captureSlots = routes.map { _ in CaptureSlot() }
+            let scratch = UnsafeMutablePointer<Float>.allocate(capacity:routes.count*Self.maximumFrames*2)
+            scratch.initialize(repeating:0,count:routes.count*Self.maximumFrames*2); captureScratch = scratch
+            let buffers = AudioBufferList.allocate(maximumBuffers:routes.count)
+            for index in routes.indices {
+                buffers[index] = AudioBuffer(mNumberChannels:2,mDataByteSize:0,mData:scratch.advanced(by:index*Self.maximumFrames*2))
+            }
+            captureBuffers = buffers
+        } else { captureSlots = []; captureScratch = nil; captureBuffers = nil }
         telemetry = CallbackTelemetry(sampleRate: sampleRate)
         self.destinations = destinations
         outputMixer = OutputMixer(sampleRate:sampleRate,destinations:destinations.count)
@@ -70,10 +78,24 @@ final class RenderContext: @unchecked Sendable {
         outputPointers.initialize(repeating: ChannelPointer(), count: destinations.count*2)
     }
     deinit {
+        captureScratch?.deinitialize(count:routes.count*Self.maximumFrames*2); captureScratch?.deallocate()
+        captureBuffers?.unsafeMutablePointer.deallocate()
         sourcePeaks.deinitialize(count:max(1,routes.count)); sourcePeaks.deallocate()
         sourceReady.deinitialize(count:max(1,routes.count)); sourceReady.deallocate()
         inputPointers.deinitialize(count: max(2,routes.count*2)); inputPointers.deallocate()
         outputPointers.deinitialize(count: destinations.count*2); outputPointers.deallocate()
+    }
+    @inline(__always) func renderCaptured(output:UnsafeMutablePointer<AudioBufferList>,frames:Int) {
+        guard frames>0, frames<=Self.maximumFrames, let captureBuffers, let captureScratch else {
+            for buffer in UnsafeMutableAudioBufferListPointer(output) { if let data = buffer.mData { memset(data,0,Int(buffer.mDataByteSize)) } }
+            fault.store(true,ordering:.relaxed); return
+        }
+        for index in captureSlots.indices {
+            let pointer = captureScratch.advanced(by:index*Self.maximumFrames*2)
+            captureSlots[index].pull(into:pointer,frames:frames,phaseGuard:capturePhaseGuard)
+            captureBuffers[index].mDataByteSize = UInt32(frames*8)
+        }
+        render(input:UnsafePointer(captureBuffers.unsafeMutablePointer),output:output)
     }
     @inline(__always) private func channel(_ channel: Int, in buffers: UnsafeMutableAudioBufferListPointer) -> ChannelPointer {
         var start = 0
@@ -161,7 +183,8 @@ private let vanilleIOProc: AudioDeviceIOProc = { _, now, input, _, output, outpu
     let buffers = UnsafeMutableAudioBufferListPointer(output)
     let frames = buffers.first.map { $0.mNumberChannels > 0 ? Int($0.mDataByteSize)/(4*Int($0.mNumberChannels)) : 0 } ?? 0
     context.telemetry.observe(now:now.pointee,output:outputTime.pointee,frames:frames)
-    context.render(input: input, output: output)
+    if context.captureSlots.isEmpty { context.render(input: input, output: output) }
+    else { context.renderCaptured(output:output,frames:frames) }
     return noErr
 }
 
@@ -180,279 +203,237 @@ struct EngineMetrics {
     var maximumCallbackGapMS: Double = 0
     var inputShortfalls: UInt64 = 0
     var sampleDiscontinuities: UInt64 = 0
+    var sourceUnderruns:[String:UInt64] = [:]
+    var sourceOverruns:[String:UInt64] = [:]
+    var sourceQueuedFrames:[String:[UInt64]] = [:]
+    var processUnderruns:[AudioObjectID:UInt64] = [:]
+    var processOverruns:[AudioObjectID:UInt64] = [:]
+    var processQueuedFrames:[AudioObjectID:[UInt64]] = [:]
+    var processCaptureGaps:[AudioObjectID:UInt64] = [:]
     var error: String?
 }
 
-/// Owned exclusively by AudioController's serial control queue.
-/// One private aggregate clocks all process taps against the selected physical output.
+/// Control-queue lifecycle for the existing renderer. The physical output clock,
+/// DSP and delay history survive process changes; each tap has an input-only reader.
 final class AudioEngine {
-    let diagnostics: AudioDiagnostics
-    private var loggedGaps: UInt64 = 0
-    private var loggedShortfalls: UInt64 = 0
-    private var loggedDiscontinuities: UInt64 = 0
-    init(diagnostics: AudioDiagnostics = AudioDiagnostics()) { self.diagnostics = diagnostics }
-    private var taps: [TapHandle] = []
-    private var aggregate: AudioObjectID = 0
-    private var ioProc: AudioDeviceIOProcID?
-    private var context: RenderContext?
-    private var startedAt = Date.distantPast
-    private var lastCallbackCount: UInt64 = 0
-    private var lastCallbackAt = Date.distantPast
-    private var observations: [HALObservation] = []
+    let diagnostics:AudioDiagnostics
+    private var sources:[ProcessCapture] = []
+    private var failedProcesses:Set<AudioObjectID> = []
+    private var rejectedApps:Set<String> = []
+    private var aggregate:AudioObjectID = 0
+    private var ioProc:AudioDeviceIOProcID?
+    private var context:RenderContext?
+    private var lastCallbackCount:UInt64 = 0
+    private var lastCallbackAt = Date()
+    private var observations:[HALObservation] = []
     private let needsRebuild = Atomic<Bool>(false)
-    private var activationFailures: Set<Int> = []
-    private var routedDevices: [OutputDevice] = []
-    private var routeSettings: [DeviceRoute] = []
+    private var routedDevices:[OutputDevice] = []
+    private var routeSettings:[DeviceRoute] = []
+    private var sourceDeviceUID = ""
     private var timingSound = false
+    private var loggedGaps:UInt64 = 0
+    private var loggedDiscontinuities:UInt64 = 0
+    private var loggedUnderruns:[Int:UInt64] = [:]
+    private var loggedOverruns:[Int:UInt64] = [:]
+    private var expectedLayout:[StreamLayout] = []
     private(set) var sampleRate = 48_000.0
-    var appIDs: [String] { taps.map(\.appID) }
-
-    func start(apps: [AudioApplication], device: OutputDevice, outputs: [OutputDevice], routes outputSettings: [DeviceRoute],
-               settings: SavedState, queue: DispatchQueue) throws {
+    init(diagnostics:AudioDiagnostics = AudioDiagnostics()) { self.diagnostics = diagnostics }
+    var appIDs:[String] { Array(Set(sources.map(\.appID))).sorted() }
+    private struct StreamLayout:Equatable {
+        let rate:Double, channels:UInt32, format:UInt32, flags:UInt32, bits:UInt32, start:UInt32
+    }
+    private func streamLayout() throws -> [StreamLayout] {
+        try HAL.objects(aggregate,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeOutput).map { stream in
+            let f = try HAL.read(stream,kAudioStreamPropertyVirtualFormat,default:AudioStreamBasicDescription())
+            return StreamLayout(rate:f.mSampleRate,channels:f.mChannelsPerFrame,format:f.mFormatID,flags:f.mFormatFlags,bits:f.mBitsPerChannel,
+                start:try HAL.read(stream,kAudioStreamPropertyStartingChannel,default:UInt32(0)))
+        }
+    }
+    func start(apps:[AudioApplication],device:OutputDevice,outputs:[OutputDevice],routes outputSettings:[DeviceRoute],
+               settings:SavedState,queue:DispatchQueue) throws {
         stop()
         guard !apps.isEmpty || settings.timingSound else { return }
-        guard !outputs.isEmpty, outputs.count <= ParameterMailbox.maxOutputs, outputSettings.count == outputs.count else {
-            throw AudioFailure(operation:"Choose one to eight connected outputs",status:kAudioHardwareUnsupportedOperationError)
-        }
-        guard apps.count <= ParameterMailbox.maxSources else {
-            throw AudioFailure(operation: "Too many applications. Processing is paused", status: kAudioHardwareUnsupportedOperationError)
+        guard !outputs.isEmpty, outputs.count<=ParameterMailbox.maxOutputs, outputSettings.count==outputs.count,
+              outputs.allSatisfy({ $0.channels==2 && $0.sampleRate>=32_000 && $0.sampleRate<=192_000 }) else {
+            throw AudioFailure(operation:"Choose connected stereo outputs at 32–192 kHz",status:kAudioHardwareUnsupportedOperationError)
         }
         let clock = outputs.first(where: { !$0.isAirPlay }) ?? outputs[0]
-        guard outputs.allSatisfy({ $0.channels == 2 && $0.sampleRate >= 32_000 && $0.sampleRate <= 192_000 }) else {
-            throw AudioFailure(operation: "Processing requires a stereo output at 32–192 kHz", status: kAudioHardwareUnsupportedOperationError)
-        }
         do {
-            diagnostics.record("engineStart", "apps=\(apps.count) outputs=\(outputs.count) rate=\(clock.sampleRate)")
-            sampleRate = clock.sampleRate
+            diagnostics.record("engineStart","apps=\(apps.count) outputs=\(outputs.count) rate=\(clock.sampleRate)")
+            sampleRate = clock.sampleRate; sourceDeviceUID = device.uid
             routedDevices = outputs; routeSettings = outputSettings
-            for app in apps {
-                let description = CATapDescription(stereoMixdownOfProcesses: app.processes)
-                description.name = "Vanille · \(app.name)"
-                description.isPrivate = true
-                description.deviceUID = device.uid
-                // Verify that readable audio exists before replacing the source's output.
-                // Denied capture and initially uncapturable content remain on their original path.
-                description.muteBehavior = .unmuted
-                var tap: AudioObjectID = 0
-                try HAL.check(AudioHardwareCreateProcessTap(description, &tap), "Allow system audio access to process \(app.name)")
-                diagnostics.record("tapCreate")
-                let uid: String
-                do { uid = try HAL.string(tap, kAudioTapPropertyUID) }
-                catch { AudioHardwareDestroyProcessTap(tap); throw error }
-                taps.append(TapHandle(appID: app.id, object: tap, uid: uid, description: description))
-                let format = try HAL.read(tap, kAudioTapPropertyFormat, default: AudioStreamBasicDescription())
-                guard Self.supports(format), format.mChannelsPerFrame == 2 else {
-                    throw AudioFailure(operation: "Unsupported tap format for \(app.name)", status: kAudioDeviceUnsupportedFormatError)
-                }
-            }
-            let composition: [String: Any] = [
-                kAudioAggregateDeviceNameKey: "Vanille Processing",
-                kAudioAggregateDeviceUIDKey: "com.avanturation.Vanille.\(UUID().uuidString)",
-                kAudioAggregateDeviceIsPrivateKey: true,
-                kAudioAggregateDeviceIsStackedKey: false,
-                kAudioAggregateDeviceMainSubDeviceKey: clock.uid,
-                kAudioAggregateDeviceSubDeviceListKey: outputs.map { d in
-                    [kAudioSubDeviceUIDKey:d.uid,kAudioSubDeviceDriftCompensationKey:d.uid != clock.uid] as [String:Any]
-                },
-                kAudioAggregateDeviceTapListKey: taps.map {
-                    [kAudioSubTapUIDKey: $0.uid, kAudioSubTapDriftCompensationKey: true] as [String: Any]
-                },
-                kAudioAggregateDeviceTapAutoStartKey: false
-            ]
-            try HAL.check(AudioHardwareCreateAggregateDevice(composition as CFDictionary, &aggregate), "Create audio processing output")
-            diagnostics.record("aggregateCreate", "taps=\(taps.count) outputs=\(outputs.count)")
-            guard try HAL.strings(aggregate,kAudioAggregateDevicePropertyFullSubDeviceList) == outputs.map(\.uid) else {
-                throw AudioFailure(operation:"Unexpected output stream order. Original audio kept",status:kAudioDeviceUnsupportedFormatError)
-            }
-            // Retain the hardware's rate; no device-wide sample-rate writes are made.
-            let actualRate = try HAL.read(aggregate, kAudioDevicePropertyNominalSampleRate, default: Double(0))
-            guard abs(actualRate-sampleRate) < 1 else {
-                throw AudioFailure(operation: "Output clock is not ready", status: kAudioDeviceUnsupportedFormatError)
-            }
-            let inputs = try HAL.objects(aggregate, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput)
-            let physicalInputs = try outputs.reduce(0) { total,d in total + (try HAL.objects(d.id,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeInput).count) }
-            guard inputs.count == physicalInputs + taps.count else {
-                throw AudioFailure(operation: "Unexpected tap stream layout", status: kAudioDeviceUnsupportedFormatError)
-            }
-            let orderedUIDs = try tapOrder()
-            guard orderedUIDs.count == taps.count, Set(orderedUIDs) == Set(taps.map(\.uid)) else {
-                throw AudioFailure(operation: "Unexpected tap order", status: kAudioDeviceUnsupportedFormatError)
-            }
-            taps = orderedUIDs.compactMap { uid in taps.first { $0.uid == uid } }
-            var routes: [RenderRoute] = []
-            for stream in inputs.suffix(taps.count) {
-                let f = try HAL.read(stream, kAudioStreamPropertyVirtualFormat, default: AudioStreamBasicDescription())
-                guard Self.supports(f), f.mChannelsPerFrame == 2, abs(f.mSampleRate-sampleRate) < 1 else {
-                    throw AudioFailure(operation: "Incompatible input stream", status: kAudioDeviceUnsupportedFormatError)
-                }
-                let first = try HAL.read(stream, kAudioStreamPropertyStartingChannel, default: UInt32(0))
-                guard first > 0 else { throw AudioFailure(operation: "Invalid channel map", status: kAudioDeviceUnsupportedFormatError) }
-                routes.append(RenderRoute(left: Int(first)-1, right: Int(first)))
-            }
-            let outputStreams = try HAL.objects(aggregate, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeOutput)
-            var outputChannels: UInt32 = 0
-            for stream in outputStreams {
-                let f = try HAL.read(stream, kAudioStreamPropertyVirtualFormat, default: AudioStreamBasicDescription())
-                guard Self.supports(f), abs(f.mSampleRate-sampleRate) < 1 else {
-                    throw AudioFailure(operation: "Incompatible output stream", status: kAudioDeviceUnsupportedFormatError)
-                }
-                outputChannels += f.mChannelsPerFrame
-            }
-            guard outputChannels == outputs.count*2,
-                  try HAL.objects(aggregate,kAudioAggregateDevicePropertyActiveSubDeviceList).count == outputs.count else {
+            let composition:[String:Any] = [kAudioAggregateDeviceNameKey:"Vanille Processing",
+                kAudioAggregateDeviceUIDKey:"com.avanturation.Vanille.\(UUID().uuidString)",
+                kAudioAggregateDeviceIsPrivateKey:true,kAudioAggregateDeviceIsStackedKey:false,
+                kAudioAggregateDeviceMainSubDeviceKey:clock.uid,
+                kAudioAggregateDeviceSubDeviceListKey:outputs.map {
+                    [kAudioSubDeviceUIDKey:$0.uid,kAudioSubDeviceDriftCompensationKey:$0.uid != clock.uid] as [String:Any]
+                }]
+            try HAL.check(AudioHardwareCreateAggregateDevice(composition as CFDictionary,&aggregate),"Create audio processing output")
+            diagnostics.record("aggregateCreate","taps=0 outputs=\(outputs.count)")
+            guard try HAL.strings(aggregate,kAudioAggregateDevicePropertyFullSubDeviceList)==outputs.map(\.uid),
+                  try HAL.objects(aggregate,kAudioAggregateDevicePropertyActiveSubDeviceList).count==outputs.count else {
                 throw AudioFailure(operation:"An output disconnected before routing started",status:kAudioDeviceUnsupportedFormatError)
             }
-            let renderContext = RenderContext(sampleRate: sampleRate, routes: routes, initiallyReady: false,
-                destinations:outputs.indices.map { RenderRoute(left:$0*2,right:$0*2+1) })
-            context = renderContext
-            update(settings)
-            try HAL.check(AudioDeviceCreateIOProcID(aggregate, vanilleIOProc,
-                Unmanaged.passUnretained(renderContext).toOpaque(), &ioProc), "Create realtime audio callback")
-            // Disable every physical input (including microphones) for this IOProc.
-            try disablePhysicalInputs(count: physicalInputs, total: inputs.count)
-            needsRebuild.store(false, ordering: .relaxed)
-            for scope in [kAudioObjectPropertyScopeInput, kAudioObjectPropertyScopeOutput] {
-                if let o = HALObservation(aggregate, kAudioDevicePropertyStreamConfiguration, scope: scope, queue: queue, change: { [weak self] in
-                    self?.diagnostics.record("engineConfigurationNotification", "scope=\(scope)")
-                    self?.needsRebuild.store(true, ordering: .relaxed)
-                }) { observations.append(o) }
+            let rate = try HAL.read(aggregate,kAudioDevicePropertyNominalSampleRate,default:Double(0))
+            expectedLayout = try streamLayout()
+            guard abs(rate-sampleRate)<1, expectedLayout.reduce(0,{ $0+Int($1.channels) })==outputs.count*2,
+                  expectedLayout.allSatisfy({ abs($0.rate-sampleRate)<1 && $0.format==kAudioFormatLinearPCM && $0.bits==32 && $0.flags & kAudioFormatFlagIsFloat != 0 && $0.flags & kAudioFormatFlagIsBigEndian == 0 }) else {
+                throw AudioFailure(operation:"Incompatible output format",status:kAudioDeviceUnsupportedFormatError)
             }
-            for d in outputs + [device] {
-                for selector in [kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyDeviceIsAlive] {
-                    if let o = HALObservation(d.id, selector, queue: queue, change: { [weak self] in
-                        self?.diagnostics.record(selector == kAudioDevicePropertyNominalSampleRate ? "sampleRateNotification" : "deviceAliveNotification")
-                        self?.needsRebuild.store(true, ordering: .relaxed)
-                    }) { observations.append(o) }
+            let quantum = Int(try HAL.read(aggregate,kAudioDevicePropertyBufferFrameSize,default:UInt32(0)))
+            guard quantum>0 && quantum<=RenderContext.maximumFrames else {
+                throw AudioFailure(operation:"Unsupported output quantum",status:kAudioDeviceUnsupportedFormatError)
+            }
+            let render = RenderContext(sampleRate:sampleRate,
+                routes:(0..<ParameterMailbox.maxSources).map { RenderRoute(left:$0*2,right:$0*2+1) },initiallyReady:false,
+                destinations:outputs.indices.map { RenderRoute(left:$0*2,right:$0*2+1) },bufferedCapture:true,capturePhaseGuard:quantum)
+            context = render; update(settings)
+            try HAL.check(AudioDeviceCreateIOProcID(aggregate,vanilleIOProc,Unmanaged.passUnretained(render).toOpaque(),&ioProc),"Create realtime output callback")
+            try disablePhysicalInputs()
+            needsRebuild.store(false,ordering:.relaxed)
+            if let observation = HALObservation(aggregate,kAudioDevicePropertyStreamConfiguration,scope:kAudioObjectPropertyScopeOutput,queue:queue,change: { [weak self] in
+                self?.diagnostics.record("engineConfigurationNotification"); self?.needsRebuild.store(true,ordering:.relaxed)
+            }) { observations.append(observation) }
+            for d in outputs+[device] {
+                for selector in [kAudioDevicePropertyNominalSampleRate,kAudioDevicePropertyDeviceIsAlive] {
+                    if let observation = HALObservation(d.id,selector,queue:queue,change: { [weak self] in
+                        self?.diagnostics.record(selector==kAudioDevicePropertyNominalSampleRate ? "sampleRateNotification" : "deviceAliveNotification")
+                        self?.needsRebuild.store(true,ordering:.relaxed)
+                    }) { observations.append(observation) }
                 }
             }
-            try HAL.check(AudioDeviceStart(aggregate, ioProc), "Start processing (system audio permission may be required)")
-            diagnostics.record("outputStreamStart")
-            loggedGaps = 0; loggedShortfalls = 0; loggedDiscontinuities = 0
-            startedAt = Date(); lastCallbackAt = startedAt; lastCallbackCount = 0
-        } catch { stop(); throw error }
+            try HAL.check(AudioDeviceStart(aggregate,ioProc),"Start audio output")
+            diagnostics.record("outputStreamStart","quantum=\(quantum) inputPhaseGuardFrames=\(quantum)")
+            lastCallbackAt = Date(); lastCallbackCount = 0; loggedGaps = 0; loggedDiscontinuities = 0
+            reconcileSources(apps,allApps:apps,settings:settings)
+        } catch { diagnostics.record("engineStartFailure",error.localizedDescription); stop(); throw error }
     }
-    private static func supports(_ f: AudioStreamBasicDescription) -> Bool {
-        f.mFormatID == kAudioFormatLinearPCM && f.mFormatFlags & kAudioFormatFlagIsFloat != 0
-        && f.mFormatFlags & kAudioFormatFlagIsBigEndian == 0 && f.mBitsPerChannel == 32
+    private func disablePhysicalInputs() throws {
+        let inputs = try HAL.objects(aggregate,kAudioDevicePropertyStreams,scope:kAudioObjectPropertyScopeInput)
+        guard !inputs.isEmpty, let ioProc else { return }
+        let offset = MemoryLayout<AudioHardwareIOProcStreamUsage>.offset(of:\.mStreamIsOn)!
+        let bytes = offset+inputs.count*MemoryLayout<UInt32>.size
+        let storage = UnsafeMutableRawPointer.allocate(byteCount:bytes,alignment:MemoryLayout<AudioHardwareIOProcStreamUsage>.alignment)
+        defer { storage.deallocate() }
+        storage.initializeMemory(as:UInt8.self,repeating:0,count:bytes)
+        let usage = storage.assumingMemoryBound(to:AudioHardwareIOProcStreamUsage.self)
+        usage.pointee.mIOProc = unsafeBitCast(ioProc,to:UnsafeMutableRawPointer.self); usage.pointee.mNumberStreams = UInt32(inputs.count)
+        var address = HAL.address(kAudioDevicePropertyIOProcStreamUsage,scope:kAudioObjectPropertyScopeInput)
+        try HAL.check(AudioObjectSetPropertyData(aggregate,&address,0,nil,UInt32(bytes),storage),"Exclude physical inputs")
     }
-    private func tapOrder() throws -> [String] {
-        try HAL.strings(aggregate,kAudioAggregateDevicePropertyTapList)
+    func reconcileSources(_ apps:[AudioApplication],allApps:[AudioApplication],settings:SavedState,retry:Bool = false) {
+        guard let context, aggregate != 0,
+              let validList = try? HAL.objects(HAL.system,kAudioHardwarePropertyProcessObjectList) else { return }
+        let valid = Set(validList)
+        if retry { failedProcesses.removeAll() }
+        failedProcesses.formIntersection(valid.intersection(Set(apps.flatMap(\.processes)))); rejectedApps.removeAll()
+        let onOtherOutput = Set(allApps.filter { app in !apps.contains(where: { $0.id==app.id }) }.map(\.id))
+        sources.removeAll { source in
+            if !valid.contains(source.process) || settings.applications[source.appID]?.bypass == true || onOtherOutput.contains(source.appID) {
+                source.stop(); return true
+            }
+            return false
+        }
+        for app in apps {
+            for process in app.processes where !sources.contains(where: { $0.process==process }) {
+                guard !failedProcesses.contains(process) else { rejectedApps.insert(app.id); continue }
+                let occupied = Set(sources.map(\.index)).union(context.captureSlots.indices.filter { context.captureSlots[$0].blocked.load(ordering:.acquiring) })
+                guard let index = (0..<ParameterMailbox.maxSources).first(where: { !occupied.contains($0) }) else {
+                    rejectedApps.insert(app.id); diagnostics.record("sourceCapacityBypass"); continue
+                }
+                do {
+                    let source = try ProcessCapture(appID:app.id,process:process,index:index,deviceUID:sourceDeviceUID,sampleRate:sampleRate,
+                        slot:context.captureSlots[index],signal:context.signals[index],diagnostics:diagnostics)
+                    sources.append(source)
+                    diagnostics.record("sourceAttach","slot=\(index)")
+                } catch {
+                    failedProcesses.insert(process); rejectedApps.insert(app.id)
+                    diagnostics.record("sourceAttachBypass",error.localizedDescription)
+                }
+            }
+        }
+        update(settings)
     }
-    private func disablePhysicalInputs(count: Int, total: Int) throws {
-        guard count > 0, let ioProc else { return }
-        let offset = MemoryLayout<AudioHardwareIOProcStreamUsage>.offset(of: \.mStreamIsOn)!
-        let bytes = offset + total * MemoryLayout<UInt32>.size
-        let data = UnsafeMutableRawPointer.allocate(byteCount: bytes, alignment: MemoryLayout<AudioHardwareIOProcStreamUsage>.alignment)
-        defer { data.deallocate() }
-        data.initializeMemory(as: UInt8.self, repeating: 0, count: bytes)
-        let usage = data.assumingMemoryBound(to: AudioHardwareIOProcStreamUsage.self)
-        usage.pointee.mIOProc = unsafeBitCast(ioProc, to: UnsafeMutableRawPointer.self)
-        usage.pointee.mNumberStreams = UInt32(total)
-        let flags = data.advanced(by: offset).assumingMemoryBound(to: UInt32.self)
-        for i in 0..<total { flags[i] = i < count ? 0 : 1 }
-        var a = HAL.address(kAudioDevicePropertyIOProcStreamUsage, scope: kAudioObjectPropertyScopeInput)
-        try HAL.check(AudioObjectSetPropertyData(aggregate, &a, 0, nil, UInt32(bytes), data), "Exclude physical input streams")
-    }
-    func update(_ settings: SavedState, routes: [DeviceRoute]? = nil) {
+    func update(_ settings:SavedState,routes:[DeviceRoute]? = nil) {
         if let routes { routeSettings = routes }
         timingSound = settings.timingSound
-        context?.mailbox.publish(gains: appIDs.map {
-            let v = settings.applications[$0] ?? AppVolume()
-            return v.muted ? 0 : v.volume
-        }, eq: settings.eq, sampleRate: sampleRate, outputs:routeSettings,timingSound:timingSound)
+        var gains = Array(repeating:Float(0),count:ParameterMailbox.maxSources)
+        for source in sources {
+            let value = settings.applications[source.appID] ?? AppVolume()
+            gains[source.index] = value.muted ? 0 : value.volume
+        }
+        context?.mailbox.publish(gains:gains,eq:settings.eq,sampleRate:sampleRate,outputs:routeSettings,timingSound:timingSound)
     }
     func metrics() -> EngineMetrics {
         guard let context else { return EngineMetrics() }
-        for index in taps.indices where !context.signals[index].ready.load(ordering: .relaxed)
-            && !activationFailures.contains(index) && context.signals[index].capturedSignal.load(ordering: .acquiring) {
-            let description = taps[index].description
-            description.muteBehavior = .mutedWhenTapped
-            do {
-                try HAL.write(taps[index].object, kAudioTapPropertyDescription, value: description)
-                context.signals[index].ready.store(true,ordering:.releasing)
-            } catch {
-                description.muteBehavior = .unmuted
-                activationFailures.insert(index)
-                NSLog("Vanille kept original audio: %@",error.localizedDescription)
-            }
+        sources.removeAll { source in
+            if !source.poll() { failedProcesses.insert(source.process); rejectedApps.insert(source.appID); return true }
+            return false
         }
-        let active = taps.indices.filter { context.signals[$0].ready.load(ordering:.relaxed) }.map { taps[$0].appID }
-        let count = context.callbacks.load(ordering: .relaxed)
+        let active = Array(Set(sources.filter { context.signals[$0.index].ready.load(ordering:.relaxed) }.map(\.appID))).sorted()
+        let count = context.callbacks.load(ordering:.relaxed)
         if count != lastCallbackCount { lastCallbackAt = Date(); lastCallbackCount = count }
-        let timedOut = Date().timeIntervalSince(lastCallbackAt) > 1.5
-        let invalid = context.fault.load(ordering: .relaxed) || needsRebuild.load(ordering: .relaxed)
-        let gaps = context.telemetry.gaps.load(ordering:.relaxed)
-        let shortfalls = context.telemetry.inputShortfalls.load(ordering:.relaxed)
-        let discontinuities = context.telemetry.sampleDiscontinuities.load(ordering:.relaxed)
-        if gaps != loggedGaps { diagnostics.record("callbackGap", "count=\(gaps) maxMS=\(context.telemetry.maximumGapMS)"); loggedGaps = gaps }
-        if shortfalls != loggedShortfalls { diagnostics.record("inputBufferShortfall", "count=\(shortfalls)"); loggedShortfalls = shortfalls }
-        if discontinuities != loggedDiscontinuities { diagnostics.record("outputSampleDiscontinuity", "count=\(discontinuities)"); loggedDiscontinuities = discontinuities }
-        var result = EngineMetrics(appIDs: active, running: count > 0 && (!active.isEmpty || timingSound), callbacks: count,
-            sampleFrames: context.sampleFrames.load(ordering: .relaxed),
-            inputRMS: context.inputRMS.load(ordering: .relaxed), outputRMS: context.outputRMS.load(ordering: .relaxed),
-            limitedSamples: context.clipped.load(ordering: .relaxed))
-        if Date().timeIntervalSince(startedAt) > 2 { result.originalAudioIDs = Set(appIDs).subtracting(active) }
-        result.outputUIDs = routedDevices.map(\.uid)
-        result.outputDelayMS = routeSettings.map(\.delayMS)
-        result.callbackGaps = gaps; result.maximumCallbackGapMS = context.telemetry.maximumGapMS
-        result.inputShortfalls = shortfalls; result.sampleDiscontinuities = discontinuities
-        if active.isEmpty && !timingSound && Date().timeIntervalSince(startedAt) > 12 {
-            result.error = "No processable audio was received. Original audio is playing. Check audio permission or use Protected Content Bypass."
-            stop(); return result
+        var changed = false
+        if needsRebuild.exchange(false,ordering:.acquiringAndReleasing) {
+            changed = (try? streamLayout()) != expectedLayout || !routedDevices.allSatisfy {
+                (try? HAL.read($0.id,kAudioDevicePropertyDeviceIsAlive,default:UInt32(0)))==1
+                    && abs(((try? HAL.read($0.id,kAudioDevicePropertyNominalSampleRate,default:Double(0))) ?? 0)-$0.sampleRate)<1
+            }
+            diagnostics.record(changed ? "configurationChanged" : "configurationUnchanged")
         }
-        if invalid || timedOut {
-            result.running = false
-            result.appIDs = []
-            result.error = invalid ? "The audio format changed. Original audio has been restored." : "Audio processing did not respond. Original audio has been restored. Check System Audio Recording permission."
+        let gaps = context.telemetry.gaps.load(ordering:.relaxed)
+        let discontinuities = context.telemetry.sampleDiscontinuities.load(ordering:.relaxed)
+        if gaps != loggedGaps { diagnostics.record("callbackGap","count=\(gaps) maxMS=\(context.telemetry.maximumGapMS)"); loggedGaps = gaps }
+        if discontinuities != loggedDiscontinuities { diagnostics.record("outputSampleDiscontinuity","count=\(discontinuities)"); loggedDiscontinuities = discontinuities }
+        var result = EngineMetrics(appIDs:active,running:count>0 && (!active.isEmpty || timingSound),callbacks:count,
+            sampleFrames:context.sampleFrames.load(ordering:.relaxed),inputRMS:context.inputRMS.load(ordering:.relaxed),
+            outputRMS:context.outputRMS.load(ordering:.relaxed),limitedSamples:context.clipped.load(ordering:.relaxed))
+        result.originalAudioIDs = Set(appIDs).subtracting(active).union(rejectedApps)
+        result.outputUIDs = routedDevices.map(\.uid); result.outputDelayMS = routeSettings.map(\.delayMS)
+        result.callbackGaps = gaps; result.maximumCallbackGapMS = context.telemetry.maximumGapMS
+        result.inputShortfalls = context.telemetry.inputShortfalls.load(ordering:.relaxed); result.sampleDiscontinuities = discontinuities
+        for source in sources {
+            let slot = context.captureSlots[source.index]
+            let underruns = slot.underruns.load(ordering:.relaxed), overruns = slot.overruns.load(ordering:.relaxed)
+            result.sourceUnderruns[source.appID,default:0] += underruns
+            result.sourceOverruns[source.appID,default:0] += overruns
+            result.processUnderruns[source.process] = underruns
+            result.processOverruns[source.process] = overruns
+            result.processCaptureGaps[source.process] = source.callbackGaps
+            if underruns != (loggedUnderruns[source.index] ?? 0) { diagnostics.record("inputRingUnderrun","slot=\(source.index) count=\(underruns)"); loggedUnderruns[source.index] = underruns }
+            if overruns != (loggedOverruns[source.index] ?? 0) { diagnostics.record("inputRingOverrun","slot=\(source.index) count=\(overruns)"); loggedOverruns[source.index] = overruns }
+            let minimum = slot.minimumQueued.load(ordering:.relaxed)
+            let written = slot.written.load(ordering:.acquiring), consumed = slot.consumed.load(ordering:.acquiring)
+            result.sourceQueuedFrames[source.appID] = [minimum == .max ? 0 : minimum,slot.maximumQueued.load(ordering:.relaxed),UInt64(slot.producerQuantum.load(ordering:.relaxed)),written>=consumed ? written-consumed : 0]
+            result.processQueuedFrames[source.process] = result.sourceQueuedFrames[source.appID]
+        }
+        if context.fault.load(ordering:.relaxed) || changed || Date().timeIntervalSince(lastCallbackAt)>1.5 {
+            result.running = false; result.appIDs = []
+            result.error = changed ? "The output configuration changed. Original audio restored." : "Audio output stopped responding. Original audio restored."
             stop()
         }
         return result
     }
     func stop() {
-        if aggregate != 0 || !taps.isEmpty { diagnostics.record("engineStop", "callbacks=\(context?.callbacks.load(ordering:.relaxed) ?? 0)") }
-        observations.removeAll()
-        // Stop the reader first: mutedWhenTapped restores the original output before teardown.
+        if aggregate != 0 { diagnostics.record("engineStop","callbacks=\(context?.callbacks.load(ordering:.relaxed) ?? 0)") }
+        observations.removeAll(); context?.suppressOutput.store(true,ordering:.relaxed)
+        for source in sources { source.stop() }; sources.removeAll()
         var callbackDestroyed = true
         if aggregate != 0, let ioProc {
-            let status = AudioDeviceStop(aggregate, ioProc)
-            diagnostics.record("outputStreamStop", "status=\(status)")
-            if status != noErr {
-                context?.suppressOutput.store(true,ordering:.relaxed)
-                for tap in taps {
-                    tap.description.muteBehavior = .unmuted
-                    try? HAL.write(tap.object,kAudioTapPropertyDescription,value:tap.description)
-                }
-                NSLog("Vanille audio stop status: %d",status)
-            }
-            let destroyed = AudioDeviceDestroyIOProcID(aggregate, ioProc)
-            callbackDestroyed = destroyed == noErr
-            if destroyed != noErr { NSLog("Vanille callback teardown status: %d",destroyed) }
+            let status = AudioDeviceStop(aggregate,ioProc)
+            diagnostics.record("outputStreamStop","status=\(status)")
+            callbackDestroyed = AudioDeviceDestroyIOProcID(aggregate,ioProc)==noErr
         }
         ioProc = nil
         if aggregate != 0 {
-            let destroyed = AudioHardwareDestroyAggregateDevice(aggregate)
-            diagnostics.record("aggregateDestroy", "status=\(destroyed)")
-            if destroyed != noErr {
-                NSLog("Vanille aggregate teardown status: %d",destroyed)
-                if !callbackDestroyed, let context {
-                    // If HAL refuses both unregister operations, retain storage until process exit
-                    // rather than risk a callback using freed memory. Suppress all output first.
-                    context.suppressOutput.store(true,ordering:.relaxed)
-                    _ = Unmanaged.passRetained(context)
-                }
-            }
-            aggregate = 0
+            let status = AudioHardwareDestroyAggregateDevice(aggregate)
+            diagnostics.record("aggregateDestroy","status=\(status)")
+            if status != noErr, !callbackDestroyed, let context { _ = Unmanaged.passRetained(context) }
         }
-        for tap in taps {
-            let status = AudioHardwareDestroyProcessTap(tap.object)
-            diagnostics.record("tapDestroy", "status=\(status)")
-            if status != noErr { NSLog("Vanille tap teardown status: %d",status) }
-        }
-        taps.removeAll()
-        activationFailures.removeAll()
-        routedDevices.removeAll(); routeSettings.removeAll(); timingSound = false
-        // IOProc has been unregistered, so all realtime storage can now be reclaimed.
-        context = nil
+        aggregate = 0; context = nil; routedDevices.removeAll(); routeSettings.removeAll()
+        failedProcesses.removeAll(); rejectedApps.removeAll(); expectedLayout.removeAll(); timingSound = false
+        loggedUnderruns.removeAll(); loggedOverruns.removeAll()
     }
     deinit { stop() }
 }
@@ -507,11 +488,9 @@ final class AudioController: @unchecked Sendable {
                 }
             }
             let desired = state.processingPaused || output == nil || destinations.isEmpty ? "" :
-                "\(output!.uid):\(output!.sampleRate):" + destinations.map { "\($0.uid):\($0.sampleRate)" }.joined(separator:",")
-                + ":timing=\(state.timingSound):"
-                + candidates.map { "\($0.id)=\($0.processes.sorted())" }.joined(separator: ";")
+                "\(output!.id):\(output!.uid):\(output!.sampleRate):\(output!.channels):" + destinations.map { "\($0.id):\($0.uid):\($0.sampleRate):\($0.channels)" }.joined(separator:",")
             if retry { failedSignature = nil; lastError = nil }
-            if desired.isEmpty || (candidates.isEmpty && !state.timingSound) {
+            if desired.isEmpty {
                 engine.stop(); signature = ""; currentMetrics = EngineMetrics()
                 if state.processingPaused { lastError = nil; failedSignature = nil }
                 return
@@ -520,6 +499,7 @@ final class AudioController: @unchecked Sendable {
             if desired != signature {
                 diagnostics.record("routingRebuild", "apps=\(candidates.count) outputs=\(destinations.count)")
                 engine.stop(); signature = ""
+                if candidates.isEmpty && !state.timingSound { return }
                 do {
                     try engine.start(apps: candidates, device: output!, outputs:destinations, routes:routes, settings: state, queue: queue)
                     signature = desired; lastError = nil
@@ -527,7 +507,10 @@ final class AudioController: @unchecked Sendable {
                     lastError = error.localizedDescription; failedSignature = desired
                     engine.stop(); currentMetrics = EngineMetrics()
                 }
-            } else { engine.update(state,routes:routes) }
+            } else {
+                engine.reconcileSources(candidates,allApps:apps,settings:state,retry:retry)
+                engine.update(state,routes:routes)
+            }
         }
     }
     func snapshot(_ completion: @escaping (EngineMetrics) -> Void) {

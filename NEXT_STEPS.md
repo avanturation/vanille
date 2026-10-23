@@ -1,6 +1,6 @@
 # Next steps
 
-1. Preserve the restored direct Core Audio renderer. The user has verified wired + one system AirPlay video synchronization. A change that makes this path slower is not acceptable for adding another destination.
+1. Keep the continuous physical output session and independent process readers. Retain the measured notification/new-app regression tests; qualify actual messenger effects, Safari pause/seek, long playback, sleep/wake, reader failure and output reconnection before public release. Measure acoustic A/V timing again: existing DSP/output alignment remains, while input handoff adds one actual callback quantum as a scheduling guard.
 2. Resolve the current system default/connection lifetime behavior with native measurements. Selecting the wired default removed the AirPlay endpoint even with an Aggregate open. Do not change the renderer based on an assumed cause or mark automatic HomePod connection complete.
 3. Repeat the full real-video pause/play/seek scenario on this baseline with the system default explicitly recorded, then run longer playback, device disconnect/reconnect, sleep/wake, permission denial and forced-exit recovery. Software readback is not acoustic verification.
 4. Finish native UI QA on clean macOS 15/26/27 accounts: Light/Dark, transparency/contrast accessibility, keyboard, VoiceOver, first launch and settings migration. Native glass is structural and stays outside the audio thread.

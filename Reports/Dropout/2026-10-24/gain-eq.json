@@ -1,0 +1,175 @@
+{
+  "allPassed" : true,
+  "configuredOutputCount" : 2,
+  "date" : "2026-10-23T18:43:02Z",
+  "measurements" : [
+    {
+      "engineCallbacks" : 218,
+      "engineInputRMS" : 0.0035215550562673072,
+      "engineOutputRMS" : 0.0035215550562673072,
+      "expectedRatio" : 1,
+      "passed" : true,
+      "probeCallbacks" : 188,
+      "ratio" : 1,
+      "readbackRMS" : 0.0068353972934960252,
+      "test" : "Original level"
+    },
+    {
+      "engineCallbacks" : 405,
+      "engineInputRMS" : 0.0035267613950796875,
+      "engineOutputRMS" : 0.0024687329345135095,
+      "expectedRatio" : 0.69999999999999996,
+      "passed" : true,
+      "probeCallbacks" : 378,
+      "ratio" : 0.69998895652962168,
+      "readbackRMS" : 0.0047847026189396825,
+      "test" : "70% app volume"
+    },
+    {
+      "engineCallbacks" : 593,
+      "engineInputRMS" : 0.0035215554414947882,
+      "engineOutputRMS" : 0,
+      "expectedRatio" : 0,
+      "passed" : true,
+      "probeCallbacks" : 571,
+      "ratio" : 0,
+      "readbackRMS" : 0,
+      "test" : "0% app volume"
+    },
+    {
+      "engineCallbacks" : 780,
+      "engineInputRMS" : 0.0035267602608597183,
+      "engineOutputRMS" : 0,
+      "expectedRatio" : 0,
+      "passed" : true,
+      "probeCallbacks" : 760,
+      "ratio" : 0,
+      "readbackRMS" : 0,
+      "test" : "App mute"
+    },
+    {
+      "engineCallbacks" : 968,
+      "engineInputRMS" : 0.0035215596058045529,
+      "engineOutputRMS" : 0.0070264351691526625,
+      "expectedRatio" : 1.9952623149688795,
+      "passed" : true,
+      "probeCallbacks" : 948,
+      "ratio" : 1.9949303980404778,
+      "readbackRMS" : 0.013636141843478829,
+      "test" : "1 kHz EQ +6 dB"
+    },
+    {
+      "engineCallbacks" : 1155,
+      "engineInputRMS" : 0.0035267579676896694,
+      "engineOutputRMS" : 0.0035184036337713256,
+      "expectedRatio" : 0.99763115748443976,
+      "passed" : true,
+      "probeCallbacks" : 1135,
+      "ratio" : 0.99713761276877522,
+      "readbackRMS" : 0.0068158317395627735,
+      "test" : "50% volume with +6 dB EQ"
+    },
+    {
+      "engineCallbacks" : 1343,
+      "engineInputRMS" : 0.0035215562631071436,
+      "engineOutputRMS" : 0.0017607781315535718,
+      "expectedRatio" : 0.5,
+      "passed" : true,
+      "probeCallbacks" : 1323,
+      "ratio" : 0.49979012813375323,
+      "readbackRMS" : 0.0034162640891614885,
+      "test" : "EQ off at 50% volume"
+    },
+    {
+      "engineCallbacks" : 0,
+      "engineInputRMS" : 0,
+      "engineOutputRMS" : 0,
+      "expectedRatio" : 0,
+      "passed" : true,
+      "probeCallbacks" : 1511,
+      "ratio" : 0,
+      "readbackRMS" : 0,
+      "test" : "Processing paused"
+    },
+    {
+      "activeAppCount" : 2,
+      "engineCallbacks" : 169,
+      "expectedA" : 1,
+      "expectedB" : 1,
+      "passed" : true,
+      "ratioA" : 1,
+      "ratioB" : 1,
+      "test" : "Two simultaneous apps"
+    },
+    {
+      "activeAppCount" : 2,
+      "engineCallbacks" : 544,
+      "expectedA" : 0.29999999999999999,
+      "expectedB" : 1,
+      "passed" : true,
+      "ratioA" : 0.30000138505273372,
+      "ratioB" : 1.0000040343997691,
+      "test" : "Independent app volume"
+    },
+    {
+      "activeAppCount" : 2,
+      "engineCallbacks" : 825,
+      "expectedA" : 0.29999999999999999,
+      "expectedB" : 0,
+      "passed" : true,
+      "ratioA" : 0.29999872874278793,
+      "ratioB" : 5.3650091010522841e-06,
+      "test" : "Independent app mute"
+    },
+    {
+      "activeAppCount" : 2,
+      "engineCallbacks" : 1106,
+      "expectedA" : 0.59857869449066381,
+      "expectedB" : 1.0983211012248588,
+      "passed" : true,
+      "ratioA" : 0.59857928223505363,
+      "ratioB" : 1.0983209041491977,
+      "test" : "Global EQ over two apps"
+    },
+    {
+      "activeAppCount" : 1,
+      "engineCallbacks" : 1388,
+      "expectedA" : 0,
+      "expectedB" : 1.0983211012248588,
+      "passed" : true,
+      "ratioA" : 2.7873542713901781e-06,
+      "ratioB" : 1.0983319782466132,
+      "test" : "Protected Content Bypass path"
+    },
+    {
+      "activeAppCount" : 1,
+      "engineCallbacks" : 1669,
+      "expectedA" : 1,
+      "expectedB" : 0,
+      "passed" : true,
+      "ratioA" : 0.99999336935571548,
+      "ratioB" : 9.0504932141506797e-06,
+      "test" : "Recovery after audio process exit"
+    },
+    {
+      "passed" : true,
+      "test" : "Default output unchanged"
+    },
+    {
+      "after" : 1,
+      "before" : 1,
+      "passed" : true,
+      "test" : "No leaked process taps"
+    },
+    {
+      "after" : 7,
+      "before" : 7,
+      "passed" : true,
+      "test" : "No leaked aggregate devices"
+    }
+  ],
+  "method" : "Unmuted process tap independently reads Vanille HAL output. No audio samples are retained.",
+  "output" : "AirPlay",
+  "sampleRate" : 48000,
+  "system" : "Version 27.0 (Build 26A428)"
+}

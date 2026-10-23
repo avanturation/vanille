@@ -1,0 +1,15 @@
+{
+  "version": "0.2.1",
+  "build": 3,
+  "offlineChecks": 72,
+  "nativeAppGainEQChecks": 17,
+  "nativeOutputChecks": 12,
+  "localReleaseBuild": "passed",
+  "freshArchiveValidation": "passed",
+  "signature": "ad hoc; not Developer ID or notarized",
+  "sourceSHA256": {
+    "Vanille/Audio/AudioEngine.swift": "1b5dc21538553af54bf6265575acb23484c79193be0bc24791ee1150ea32fd1b",
+    "Vanille/Audio/CaptureSlot.swift": "d1c79d6bd3cff805f18a193ab666719a09c53957f011867f95dad9dc88c433f7",
+    "Vanille/Audio/AudioDiagnostics.swift": "3fd83ed39950600821974d8639f67d38a9d30a7dc67a3c98c10e8c35e25f0a53"
+  }
+}

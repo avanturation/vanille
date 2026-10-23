@@ -1,6 +1,6 @@
 # Release preparation
 
-Version: Config/Version.xcconfig. Current candidate: 0.2.0 (2).
+Version: Config/Version.xcconfig. Current candidate: 0.2.1 (3).
 
 This is an **ad hoc signed development candidate**, not a notarized public macOS release. The source repository is public. No GitHub Release or binary upload is performed by the preparation script.
 
@@ -17,6 +17,7 @@ Xcode: open Vanille.xcodeproj, choose the shared Vanille scheme and Release. Xco
 
 ## Before publishing a binary
 
+- Review [AUDIO_DROPOUT_REPORT.md](AUDIO_DROPOUT_REPORT.md). The process-churn regression has native stream measurements; real messenger, acoustic A/V timing, long-duration and clean-account qualification are separate release gates.
 - Run the baseline wired + one system AirPlay acceptance scenario, including real video, pause/play/seek, gain/EQ and original-output recovery. Record the system default explicitly.
 - Verify first launch, denied audio permission, missing/disconnected devices and existing settings migration on a clean user account.
 - Check Light/Dark, Reduce Transparency, Increase Contrast, VoiceOver and keyboard navigation on the target OS versions.

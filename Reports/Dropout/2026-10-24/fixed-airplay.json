@@ -1,0 +1,660 @@
+{
+  "allPassed": true,
+  "carrierQueuedFrames": [
+    128,
+    1024,
+    512
+  ],
+  "carrierRingOverrunsDuringMonitoring": 0,
+  "carrierRingUnderrunsDuringMonitoring": 0,
+  "date": "2026-10-23T18:13:07Z",
+  "engineCallbackGaps": 0,
+  "error": "",
+  "events": [
+    {
+      "detail": "",
+      "hostTime": 85431229464272,
+      "kind": "continuityMonitoringStart",
+      "sequence": 169,
+      "time": "2026-10-23T18:12:34Z"
+    },
+    {
+      "detail": "index=0 Second app starts",
+      "hostTime": 85431229481248,
+      "kind": "continuityStimulus",
+      "sequence": 170,
+      "time": "2026-10-23T18:12:34Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431234363429,
+      "kind": "processListNotification",
+      "sequence": 171,
+      "time": "2026-10-23T18:12:34Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431235099956,
+      "kind": "processListNotification",
+      "sequence": 172,
+      "time": "2026-10-23T18:12:34Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431251761563,
+      "kind": "tapCreate",
+      "sequence": 173,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431252256642,
+      "kind": "captureAggregateCreate",
+      "sequence": 174,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431252321705,
+      "kind": "hardwareNotification",
+      "sequence": 175,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431252659245,
+      "kind": "captureReaderStart",
+      "sequence": 176,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431252659331,
+      "kind": "sourceAttach",
+      "sequence": 177,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431253666389,
+      "kind": "captureReaderConfirmed",
+      "sequence": 178,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "slot=1 count=1 maxMS=27.913458333333335",
+      "hostTime": 85431259622131,
+      "kind": "captureCallbackGap",
+      "sequence": 179,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "slot=1 count=1",
+      "hostTime": 85431259623613,
+      "kind": "inputRingUnderrun",
+      "sequence": 180,
+      "time": "2026-10-23T18:12:35Z"
+    },
+    {
+      "detail": "index=1 Second app exits",
+      "hostTime": 85431319431830,
+      "kind": "continuityStimulus",
+      "sequence": 181,
+      "time": "2026-10-23T18:12:37Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431320723404,
+      "kind": "processListNotification",
+      "sequence": 182,
+      "time": "2026-10-23T18:12:37Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431322142883,
+      "kind": "captureReaderStop",
+      "sequence": 183,
+      "time": "2026-10-23T18:12:38Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431322143142,
+      "kind": "captureAggregateDestroy",
+      "sequence": 184,
+      "time": "2026-10-23T18:12:38Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431322220655,
+      "kind": "tapDestroy",
+      "sequence": 185,
+      "time": "2026-10-23T18:12:38Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431322466796,
+      "kind": "processListNotification",
+      "sequence": 186,
+      "time": "2026-10-23T18:12:38Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431324365261,
+      "kind": "hardwareNotification",
+      "sequence": 187,
+      "time": "2026-10-23T18:12:38Z"
+    },
+    {
+      "detail": "index=2 System alert",
+      "hostTime": 85431367562952,
+      "kind": "continuityStimulus",
+      "sequence": 188,
+      "time": "2026-10-23T18:12:39Z"
+    },
+    {
+      "detail": "mediaDefaultPreserved=true",
+      "hostTime": 85431367629350,
+      "kind": "testSystemEffectsRouteChanged",
+      "sequence": 189,
+      "time": "2026-10-23T18:12:39Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431367766482,
+      "kind": "systemEffectsOutputNotification",
+      "sequence": 190,
+      "time": "2026-10-23T18:12:39Z"
+    },
+    {
+      "detail": "index=3 Short-effect process starts",
+      "hostTime": 85431418068578,
+      "kind": "continuityStimulus",
+      "sequence": 191,
+      "time": "2026-10-23T18:12:42Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431422698319,
+      "kind": "processListNotification",
+      "sequence": 192,
+      "time": "2026-10-23T18:12:42Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431423368079,
+      "kind": "processListNotification",
+      "sequence": 193,
+      "time": "2026-10-23T18:12:42Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431443843219,
+      "kind": "tapCreate",
+      "sequence": 194,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431444320833,
+      "kind": "captureAggregateCreate",
+      "sequence": 195,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431444449907,
+      "kind": "hardwareNotification",
+      "sequence": 196,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431444612954,
+      "kind": "captureReaderStart",
+      "sequence": 197,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431444613064,
+      "kind": "sourceAttach",
+      "sequence": 198,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431457849794,
+      "kind": "captureReaderConfirmed",
+      "sequence": 199,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "slot=1 count=1 maxMS=29.199708333333334",
+      "hostTime": 85431463622184,
+      "kind": "captureCallbackGap",
+      "sequence": 200,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "slot=1 count=2",
+      "hostTime": 85431463623437,
+      "kind": "inputRingUnderrun",
+      "sequence": 201,
+      "time": "2026-10-23T18:12:43Z"
+    },
+    {
+      "detail": "index=4 Short-effect process exits",
+      "hostTime": 85431505603572,
+      "kind": "continuityStimulus",
+      "sequence": 202,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431506827511,
+      "kind": "processListNotification",
+      "sequence": 203,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431508215359,
+      "kind": "captureReaderStop",
+      "sequence": 204,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431508215539,
+      "kind": "captureAggregateDestroy",
+      "sequence": 205,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431508292886,
+      "kind": "tapDestroy",
+      "sequence": 206,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431508588617,
+      "kind": "processListNotification",
+      "sequence": 207,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431509998502,
+      "kind": "hardwareNotification",
+      "sequence": 208,
+      "time": "2026-10-23T18:12:45Z"
+    },
+    {
+      "detail": "index=5 System alert",
+      "hostTime": 85431556056206,
+      "kind": "continuityStimulus",
+      "sequence": 209,
+      "time": "2026-10-23T18:12:47Z"
+    },
+    {
+      "detail": "index=6 Existing app helper starts",
+      "hostTime": 85431606488218,
+      "kind": "continuityStimulus",
+      "sequence": 210,
+      "time": "2026-10-23T18:12:49Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431611383545,
+      "kind": "processListNotification",
+      "sequence": 211,
+      "time": "2026-10-23T18:12:50Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431612033664,
+      "kind": "processListNotification",
+      "sequence": 212,
+      "time": "2026-10-23T18:12:50Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431635707667,
+      "kind": "tapCreate",
+      "sequence": 213,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431636190765,
+      "kind": "hardwareNotification",
+      "sequence": 214,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431636195297,
+      "kind": "captureAggregateCreate",
+      "sequence": 215,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431636629930,
+      "kind": "captureReaderStart",
+      "sequence": 216,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431636630033,
+      "kind": "sourceAttach",
+      "sequence": 217,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431637680386,
+      "kind": "captureReaderConfirmed",
+      "sequence": 218,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "slot=1 count=1 maxMS=31.437958333333334",
+      "hostTime": 85431643622406,
+      "kind": "captureCallbackGap",
+      "sequence": 219,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "slot=1 count=3",
+      "hostTime": 85431643623406,
+      "kind": "inputRingUnderrun",
+      "sequence": 220,
+      "time": "2026-10-23T18:12:51Z"
+    },
+    {
+      "detail": "index=7 Existing app helper exits",
+      "hostTime": 85431697548328,
+      "kind": "continuityStimulus",
+      "sequence": 221,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431698845499,
+      "kind": "processListNotification",
+      "sequence": 222,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431700199478,
+      "kind": "processListNotification",
+      "sequence": 223,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431700244040,
+      "kind": "captureReaderStop",
+      "sequence": 224,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431700244269,
+      "kind": "captureAggregateDestroy",
+      "sequence": 225,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431700313455,
+      "kind": "tapDestroy",
+      "sequence": 226,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431701715786,
+      "kind": "hardwareNotification",
+      "sequence": 227,
+      "time": "2026-10-23T18:12:53Z"
+    },
+    {
+      "detail": "index=8 System alert",
+      "hostTime": 85431748066608,
+      "kind": "continuityStimulus",
+      "sequence": 228,
+      "time": "2026-10-23T18:12:55Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431748248936,
+      "kind": "testSystemEffectsRouteRestored",
+      "sequence": 229,
+      "time": "2026-10-23T18:12:55Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431748351500,
+      "kind": "systemEffectsOutputNotification",
+      "sequence": 230,
+      "time": "2026-10-23T18:12:55Z"
+    },
+    {
+      "detail": "index=9 Short-effect process starts",
+      "hostTime": 85431798655757,
+      "kind": "continuityStimulus",
+      "sequence": 231,
+      "time": "2026-10-23T18:12:57Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431803705473,
+      "kind": "processListNotification",
+      "sequence": 232,
+      "time": "2026-10-23T18:12:58Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431804370251,
+      "kind": "processListNotification",
+      "sequence": 233,
+      "time": "2026-10-23T18:12:58Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431827762082,
+      "kind": "tapCreate",
+      "sequence": 234,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431828249834,
+      "kind": "captureAggregateCreate",
+      "sequence": 235,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431828367389,
+      "kind": "hardwareNotification",
+      "sequence": 236,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431828536461,
+      "kind": "captureReaderStart",
+      "sequence": 237,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431828536547,
+      "kind": "sourceAttach",
+      "sequence": 238,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "slot=1",
+      "hostTime": 85431835823099,
+      "kind": "captureReaderConfirmed",
+      "sequence": 239,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "slot=1 count=1 maxMS=37.53820833333334",
+      "hostTime": 85431841601088,
+      "kind": "captureCallbackGap",
+      "sequence": 240,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "slot=1 count=4",
+      "hostTime": 85431841602400,
+      "kind": "inputRingUnderrun",
+      "sequence": 241,
+      "time": "2026-10-23T18:12:59Z"
+    },
+    {
+      "detail": "index=10 Short-effect process exits",
+      "hostTime": 85431889541198,
+      "kind": "continuityStimulus",
+      "sequence": 242,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431890763846,
+      "kind": "processListNotification",
+      "sequence": 243,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431892170208,
+      "kind": "captureReaderStop",
+      "sequence": 244,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431892170615,
+      "kind": "captureAggregateDestroy",
+      "sequence": 245,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "slot=1 status=0",
+      "hostTime": 85431892253790,
+      "kind": "tapDestroy",
+      "sequence": 246,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431892523090,
+      "kind": "processListNotification",
+      "sequence": 247,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "",
+      "hostTime": 85431894088690,
+      "kind": "hardwareNotification",
+      "sequence": 248,
+      "time": "2026-10-23T18:13:01Z"
+    },
+    {
+      "detail": "index=11 System alert",
+      "hostTime": 85431940002719,
+      "kind": "continuityStimulus",
+      "sequence": 249,
+      "time": "2026-10-23T18:13:03Z"
+    }
+  ],
+  "helperGroupedWithCarrier": true,
+  "inputBufferShortfalls": 0,
+  "maximumEngineCallbackGapMS": 2.6943333333333332,
+  "measurements": [
+    {
+      "analyzedWindows": 634,
+      "lowCarrierWindows": 0,
+      "maximumReadbackCallbackGapMS": 10.752250000000002,
+      "minimumCarrierAmplitude": 0.0049316828025252136
+    }
+  ],
+  "mediaAndSystemEffectsSameDevice": false,
+  "mediaDefaultUnchanged": true,
+  "mode": "airplay",
+  "outputGapsDuringMonitoring": 0,
+  "outputRestartsDuringCarrier": 0,
+  "outputs": [
+    "System AirPlay"
+  ],
+  "outputSampleDiscontinuities": 0,
+  "outputSampleDiscontinuitiesDuringMonitoring": 0,
+  "outputStopsDuringCarrier": 0,
+  "resourcesCleaned": true,
+  "scope": "Independent HAL stream readback of quiet native fixtures, with real system-alert requests. Not an acoustic measurement, actual messenger send or browser-video qualification.",
+  "signalPass": true,
+  "stimuli": [
+    {
+      "event": "Second app starts",
+      "hostTime": 85431229481090
+    },
+    {
+      "event": "Second app exits",
+      "hostTime": 85431319431461
+    },
+    {
+      "event": "System alert",
+      "hostTime": 85431367562596
+    },
+    {
+      "event": "Short-effect process starts",
+      "hostTime": 85431418067816
+    },
+    {
+      "event": "Short-effect process exits",
+      "hostTime": 85431505603224
+    },
+    {
+      "event": "System alert",
+      "hostTime": 85431556055859
+    },
+    {
+      "event": "Existing app helper starts",
+      "hostTime": 85431606487871
+    },
+    {
+      "event": "Existing app helper exits",
+      "hostTime": 85431697547996
+    },
+    {
+      "event": "System alert",
+      "hostTime": 85431748066193
+    },
+    {
+      "event": "Short-effect process starts",
+      "hostTime": 85431798655428
+    },
+    {
+      "event": "Short-effect process exits",
+      "hostTime": 85431889540895
+    },
+    {
+      "event": "System alert",
+      "hostTime": 85431940002510
+    }
+  ],
+  "systemEffectsDefaultUnchanged": true,
+  "systemEffectsRouteChangesTested": 2,
+  "systemEffectsSharedMediaOutputTested": false
+}

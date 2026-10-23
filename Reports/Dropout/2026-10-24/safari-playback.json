@@ -1,0 +1,4573 @@
+{
+  "allPassed" : true,
+  "carrierContinuous" : true,
+  "date" : "2026-10-23T18:50:08Z",
+  "durationSeconds" : 180,
+  "events" : [
+    {
+      "detail" : "outputs=2",
+      "hostTime" : 85481012066193,
+      "kind" : "playbackObservationBegin",
+      "sequence" : 185,
+      "time" : "2026-10-23T18:47:08Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481132076293,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 186,
+      "time" : "2026-10-23T18:47:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481300137840,
+      "kind" : "playbackObservationTransientStart",
+      "sequence" : 187,
+      "time" : "2026-10-23T18:47:20Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481305918689,
+      "kind" : "processListNotification",
+      "sequence" : 188,
+      "time" : "2026-10-23T18:47:20Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481306861028,
+      "kind" : "processListNotification",
+      "sequence" : 189,
+      "time" : "2026-10-23T18:47:20Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85481325804188,
+      "kind" : "tapCreate",
+      "sequence" : 190,
+      "time" : "2026-10-23T18:47:21Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481327034304,
+      "kind" : "hardwareNotification",
+      "sequence" : 191,
+      "time" : "2026-10-23T18:47:21Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85481327038275,
+      "kind" : "captureAggregateCreate",
+      "sequence" : 192,
+      "time" : "2026-10-23T18:47:21Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85481327523353,
+      "kind" : "captureReaderStart",
+      "sequence" : 193,
+      "time" : "2026-10-23T18:47:21Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85481327523497,
+      "kind" : "sourceAttach",
+      "sequence" : 194,
+      "time" : "2026-10-23T18:47:21Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85481339034016,
+      "kind" : "captureReaderConfirmed",
+      "sequence" : 195,
+      "time" : "2026-10-23T18:47:22Z"
+    },
+    {
+      "detail" : "slot=2 count=1 maxMS=38.70429166666667",
+      "hostTime" : 85481344860539,
+      "kind" : "captureCallbackGap",
+      "sequence" : 196,
+      "time" : "2026-10-23T18:47:22Z"
+    },
+    {
+      "detail" : "slot=2 count=1",
+      "hostTime" : 85481344861617,
+      "kind" : "inputRingUnderrun",
+      "sequence" : 197,
+      "time" : "2026-10-23T18:47:22Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85481374128006,
+      "kind" : "captureReaderStop",
+      "sequence" : 198,
+      "time" : "2026-10-23T18:47:23Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85481374128429,
+      "kind" : "captureAggregateDestroy",
+      "sequence" : 199,
+      "time" : "2026-10-23T18:47:23Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85481374196023,
+      "kind" : "tapDestroy",
+      "sequence" : 200,
+      "time" : "2026-10-23T18:47:23Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481375130248,
+      "kind" : "processListNotification",
+      "sequence" : 201,
+      "time" : "2026-10-23T18:47:23Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481375914353,
+      "kind" : "processListNotification",
+      "sequence" : 202,
+      "time" : "2026-10-23T18:47:23Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481376461336,
+      "kind" : "hardwareNotification",
+      "sequence" : 203,
+      "time" : "2026-10-23T18:47:23Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85481612092092,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 204,
+      "time" : "2026-10-23T18:47:33Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482332092970,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 205,
+      "time" : "2026-10-23T18:48:03Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482500102729,
+      "kind" : "playbackObservationTransientStart",
+      "sequence" : 206,
+      "time" : "2026-10-23T18:48:10Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482505435977,
+      "kind" : "processListNotification",
+      "sequence" : 207,
+      "time" : "2026-10-23T18:48:10Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482506325201,
+      "kind" : "processListNotification",
+      "sequence" : 208,
+      "time" : "2026-10-23T18:48:10Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85482525703781,
+      "kind" : "tapCreate",
+      "sequence" : 209,
+      "time" : "2026-10-23T18:48:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85482526218895,
+      "kind" : "captureAggregateCreate",
+      "sequence" : 210,
+      "time" : "2026-10-23T18:48:11Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482526529820,
+      "kind" : "hardwareNotification",
+      "sequence" : 211,
+      "time" : "2026-10-23T18:48:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85482526629656,
+      "kind" : "captureReaderStart",
+      "sequence" : 212,
+      "time" : "2026-10-23T18:48:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85482526629752,
+      "kind" : "sourceAttach",
+      "sequence" : 213,
+      "time" : "2026-10-23T18:48:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85482539032886,
+      "kind" : "captureReaderConfirmed",
+      "sequence" : 214,
+      "time" : "2026-10-23T18:48:12Z"
+    },
+    {
+      "detail" : "slot=2 count=1 maxMS=36.17775",
+      "hostTime" : 85482544848891,
+      "kind" : "captureCallbackGap",
+      "sequence" : 215,
+      "time" : "2026-10-23T18:48:12Z"
+    },
+    {
+      "detail" : "slot=2 count=2",
+      "hostTime" : 85482544850143,
+      "kind" : "inputRingUnderrun",
+      "sequence" : 216,
+      "time" : "2026-10-23T18:48:12Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85482574194219,
+      "kind" : "captureReaderStop",
+      "sequence" : 217,
+      "time" : "2026-10-23T18:48:13Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85482574194604,
+      "kind" : "captureAggregateDestroy",
+      "sequence" : 218,
+      "time" : "2026-10-23T18:48:13Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85482574263208,
+      "kind" : "tapDestroy",
+      "sequence" : 219,
+      "time" : "2026-10-23T18:48:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482575275651,
+      "kind" : "processListNotification",
+      "sequence" : 220,
+      "time" : "2026-10-23T18:48:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482576049304,
+      "kind" : "processListNotification",
+      "sequence" : 221,
+      "time" : "2026-10-23T18:48:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85482576541866,
+      "kind" : "hardwareNotification",
+      "sequence" : 222,
+      "time" : "2026-10-23T18:48:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85483052070037,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 223,
+      "time" : "2026-10-23T18:48:33Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85483772084599,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 224,
+      "time" : "2026-10-23T18:49:03Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85483940125213,
+      "kind" : "playbackObservationTransientStart",
+      "sequence" : 225,
+      "time" : "2026-10-23T18:49:10Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85483945427586,
+      "kind" : "processListNotification",
+      "sequence" : 226,
+      "time" : "2026-10-23T18:49:10Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85483946350160,
+      "kind" : "processListNotification",
+      "sequence" : 227,
+      "time" : "2026-10-23T18:49:10Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85483965732211,
+      "kind" : "tapCreate",
+      "sequence" : 228,
+      "time" : "2026-10-23T18:49:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85483966212572,
+      "kind" : "captureAggregateCreate",
+      "sequence" : 229,
+      "time" : "2026-10-23T18:49:11Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85483966406397,
+      "kind" : "hardwareNotification",
+      "sequence" : 230,
+      "time" : "2026-10-23T18:49:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85483966535935,
+      "kind" : "captureReaderStart",
+      "sequence" : 231,
+      "time" : "2026-10-23T18:49:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85483966536031,
+      "kind" : "sourceAttach",
+      "sequence" : 232,
+      "time" : "2026-10-23T18:49:11Z"
+    },
+    {
+      "detail" : "slot=2",
+      "hostTime" : 85483979054590,
+      "kind" : "captureReaderConfirmed",
+      "sequence" : 233,
+      "time" : "2026-10-23T18:49:12Z"
+    },
+    {
+      "detail" : "slot=2 count=1 maxMS=30.99404166666667",
+      "hostTime" : 85483984866511,
+      "kind" : "captureCallbackGap",
+      "sequence" : 234,
+      "time" : "2026-10-23T18:49:12Z"
+    },
+    {
+      "detail" : "slot=2 count=3",
+      "hostTime" : 85483984868053,
+      "kind" : "inputRingUnderrun",
+      "sequence" : 235,
+      "time" : "2026-10-23T18:49:12Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85484014319515,
+      "kind" : "captureReaderStop",
+      "sequence" : 236,
+      "time" : "2026-10-23T18:49:13Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85484014319982,
+      "kind" : "captureAggregateDestroy",
+      "sequence" : 237,
+      "time" : "2026-10-23T18:49:13Z"
+    },
+    {
+      "detail" : "slot=2 status=0",
+      "hostTime" : 85484014385765,
+      "kind" : "tapDestroy",
+      "sequence" : 238,
+      "time" : "2026-10-23T18:49:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85484015352496,
+      "kind" : "processListNotification",
+      "sequence" : 239,
+      "time" : "2026-10-23T18:49:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85484016145536,
+      "kind" : "processListNotification",
+      "sequence" : 240,
+      "time" : "2026-10-23T18:49:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85484016664904,
+      "kind" : "hardwareNotification",
+      "sequence" : 241,
+      "time" : "2026-10-23T18:49:13Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85484492082295,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 242,
+      "time" : "2026-10-23T18:49:33Z"
+    },
+    {
+      "detail" : "",
+      "hostTime" : 85485212089223,
+      "kind" : "playbackObservationAlert",
+      "sequence" : 243,
+      "time" : "2026-10-23T18:50:03Z"
+    }
+  ],
+  "originalCaptureProcessesPresent" : true,
+  "outputClockContinuous" : true,
+  "outputLifecycleEvents" : 0,
+  "player" : "Safari",
+  "queueDriftFrames" : [
+    512
+  ],
+  "queueDriftWithinTwoQuanta" : true,
+  "samples" : [
+    {
+      "callbacks" : 9135,
+      "frames" : 4677120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00026859661216564686,
+        0.00089152628972755533
+      ],
+      "second" : 1,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9229,
+      "frames" : 4725248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.012475801853129773,
+        0.014641590156021293
+      ],
+      "second" : 2,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9323,
+      "frames" : 4773376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.015914599327859297,
+        0.02396355175603309
+      ],
+      "second" : 3,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9416,
+      "frames" : 4820992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.019908693316216728,
+        0.014557758236383637
+      ],
+      "second" : 4,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9510,
+      "frames" : 4869120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0058489631310620254,
+        0.0019768722929767992
+      ],
+      "second" : 5,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9604,
+      "frames" : 4917248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0014538280168161872,
+        0.0024775155208145083
+      ],
+      "second" : 6,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9698,
+      "frames" : 4965376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.020380870093147995,
+        0.0049206791121107225
+      ],
+      "second" : 7,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9791,
+      "frames" : 5012992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.013432826621778892,
+        0.026888048452695355
+      ],
+      "second" : 8,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9885,
+      "frames" : 5061120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.022053833041958536,
+        0.0049896152084501254
+      ],
+      "second" : 9,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 9979,
+      "frames" : 5109248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.002786837149869379,
+        0.00073402826743709044
+      ],
+      "second" : 10,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10073,
+      "frames" : 5157376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.000613096087035717,
+        0.010949944299792838
+      ],
+      "second" : 11,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10166,
+      "frames" : 5204992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0027425156152871121,
+        0.0057327791145822876
+      ],
+      "second" : 12,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10283,
+      "frames" : 5264896,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.013234021145312757,
+        0.0066998708561789889
+      ],
+      "second" : 13,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10380,
+      "frames" : 5314560,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.014804400047415213,
+        0.020399970201189492
+      ],
+      "second" : 14,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10448,
+      "frames" : 5349376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.01923876299211541,
+        0.0010957303410781191
+      ],
+      "second" : 15,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10565,
+      "frames" : 5409280,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.011961891093321448,
+        0.00043962872060561881
+      ],
+      "second" : 16,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10635,
+      "frames" : 5445120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.017084126668874676,
+        0.00032986042290889705
+      ],
+      "second" : 17,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10729,
+      "frames" : 5493248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0038681684197666107,
+        0.0032333433378146036
+      ],
+      "second" : 18,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10823,
+      "frames" : 5541376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0014893527820352389,
+        0.0018716345249694978
+      ],
+      "second" : 19,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 10916,
+      "frames" : 5588992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0018285476087369467,
+        0.0017341948210794513
+      ],
+      "second" : 20,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11010,
+      "frames" : 5637120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.016128185487534523,
+        0.011459587446824359
+      ],
+      "second" : 21,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11104,
+      "frames" : 5685248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0029156934792925154,
+        0.015207797223061235
+      ],
+      "second" : 22,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11198,
+      "frames" : 5733376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.021843998830684493,
+        0.0016956916031058533
+      ],
+      "second" : 23,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11291,
+      "frames" : 5780992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0022443251543777776,
+        0.0053989964761134825
+      ],
+      "second" : 24,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11385,
+      "frames" : 5829120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0020594241600126882,
+        0.00067153258018017796
+      ],
+      "second" : 25,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11479,
+      "frames" : 5877248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0032163135012637407,
+        0.0068838401028501316
+      ],
+      "second" : 26,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11573,
+      "frames" : 5925376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0008972215462874966,
+        0.0017079015472134321
+      ],
+      "second" : 27,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11666,
+      "frames" : 5972992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0071927434168763031,
+        0.012539570991821682
+      ],
+      "second" : 28,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11760,
+      "frames" : 6021120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0073368138922527094,
+        0.0038258585246060579
+      ],
+      "second" : 29,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11854,
+      "frames" : 6069248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0064643899318165771,
+        0.00095907809470385807
+      ],
+      "second" : 30,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 11948,
+      "frames" : 6117376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.011600522321859957,
+        0.024120978836731234
+      ],
+      "second" : 31,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12041,
+      "frames" : 6164992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.01511290962325601,
+        0.0070747735843583407
+      ],
+      "second" : 32,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12135,
+      "frames" : 6213120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0051263886169487334,
+        0.0019250168390391065
+      ],
+      "second" : 33,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12229,
+      "frames" : 6261248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0026280579167819451,
+        0.0036354557079528328
+      ],
+      "second" : 34,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12323,
+      "frames" : 6309376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.016351086724067942,
+        0.019640818296763098
+      ],
+      "second" : 35,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12416,
+      "frames" : 6356992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        6.1381854418769e-05,
+        0.00010749690331483999
+      ],
+      "second" : 36,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12510,
+      "frames" : 6405120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0068976441472131823,
+        4.7502770199367744e-05
+      ],
+      "second" : 37,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12604,
+      "frames" : 6453248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0079703356106145817,
+        0.0067834862339826909
+      ],
+      "second" : 38,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12698,
+      "frames" : 6501376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.017089934662523103,
+        0.0035827365160293655
+      ],
+      "second" : 39,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12791,
+      "frames" : 6548992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        3.1253600294875854e-05,
+        0.00018936026399816162
+      ],
+      "second" : 40,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12885,
+      "frames" : 6597120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0010044631155922662,
+        0.0028621278833487682
+      ],
+      "second" : 41,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 12979,
+      "frames" : 6645248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00010933037366066447,
+        0.0041387271217000303
+      ],
+      "second" : 42,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13073,
+      "frames" : 6693376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0040932912618377258,
+        0.013294038716264726
+      ],
+      "second" : 43,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13166,
+      "frames" : 6740992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0042061692430020959,
+        0.0018920841187714935
+      ],
+      "second" : 44,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13260,
+      "frames" : 6789120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.014994060895039622,
+        0.012699536171605231
+      ],
+      "second" : 45,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13354,
+      "frames" : 6837248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.002219657523898948,
+        0.015266698813253217
+      ],
+      "second" : 46,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13448,
+      "frames" : 6885376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00048740776163866119,
+        0.0041529536226730564
+      ],
+      "second" : 47,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13541,
+      "frames" : 6932992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0081562674496823834,
+        0.0025249281737463936
+      ],
+      "second" : 48,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13635,
+      "frames" : 6981120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0004583001709808912,
+        0.013033668889472157
+      ],
+      "second" : 49,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13729,
+      "frames" : 7029248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.008419845332095905,
+        0.0090783194723747483
+      ],
+      "second" : 50,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13823,
+      "frames" : 7077376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0096426327374656944,
+        0.016723529466088814
+      ],
+      "second" : 51,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 13916,
+      "frames" : 7124992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.022504023071527532,
+        0.0041899422335571054
+      ],
+      "second" : 52,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14010,
+      "frames" : 7173120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.022172935162923027,
+        0.0032301155847022605
+      ],
+      "second" : 53,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14104,
+      "frames" : 7221248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0011041210908736415,
+        0.0031495758191170159
+      ],
+      "second" : 54,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14198,
+      "frames" : 7269376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0049954340586300218,
+        0.0054587182952735925
+      ],
+      "second" : 55,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14291,
+      "frames" : 7316992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.010632219767069713,
+        0.015105917145556674
+      ],
+      "second" : 56,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14385,
+      "frames" : 7365120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00055628079699956848,
+        0.0016538170163215543
+      ],
+      "second" : 57,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14479,
+      "frames" : 7413248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00073342926258409104,
+        0.0046587969912187388
+      ],
+      "second" : 58,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14573,
+      "frames" : 7461376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.014036476802087087,
+        0.016238001330189693
+      ],
+      "second" : 59,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14666,
+      "frames" : 7508992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.020472200973549817,
+        0.013230135853163589
+      ],
+      "second" : 60,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14760,
+      "frames" : 7557120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0035623143640600768,
+        0.011217585242703977
+      ],
+      "second" : 61,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14854,
+      "frames" : 7605248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0034066466180110678,
+        0.0014182798362823541
+      ],
+      "second" : 62,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 14971,
+      "frames" : 7665152,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00045986704412704764,
+        0.0057567170255590086
+      ],
+      "second" : 63,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15065,
+      "frames" : 7713280,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0025070158267210575,
+        0.00042039995465346529
+      ],
+      "second" : 64,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15135,
+      "frames" : 7749120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        9.130899099848343e-05,
+        0.00020688479907612391
+      ],
+      "second" : 65,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15252,
+      "frames" : 7809024,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        5.6747722171612059e-05,
+        0.00016535647693399292
+      ],
+      "second" : 66,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15323,
+      "frames" : 7845376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0139378713854978,
+        0.0036808021385468627
+      ],
+      "second" : 67,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15416,
+      "frames" : 7892992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0038799988221148141,
+        0.0062215504541234239
+      ],
+      "second" : 68,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15510,
+      "frames" : 7941120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.011539896705566381,
+        0.0088846979474660748
+      ],
+      "second" : 69,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15604,
+      "frames" : 7989248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00024236459580918602,
+        0.0036695846116409363
+      ],
+      "second" : 70,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15698,
+      "frames" : 8037376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0082993713202546039,
+        0.0060003054131702663
+      ],
+      "second" : 71,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15791,
+      "frames" : 8084992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0045099191115027153,
+        0.0028160068335438921
+      ],
+      "second" : 72,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15885,
+      "frames" : 8133120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00024396290513902205,
+        0.0014159230722858664
+      ],
+      "second" : 73,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 15979,
+      "frames" : 8181248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0066328626685885784,
+        0.00081831823810039461
+      ],
+      "second" : 74,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16073,
+      "frames" : 8229376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.011344681346360883,
+        0.00040149045639545458
+      ],
+      "second" : 75,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16166,
+      "frames" : 8276992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0041142376873685594,
+        0.018084351274753385
+      ],
+      "second" : 76,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16260,
+      "frames" : 8325120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0023885881584767257,
+        0.0079001659318468313
+      ],
+      "second" : 77,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16354,
+      "frames" : 8373248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0051002239231116983,
+        0.009746057612625517
+      ],
+      "second" : 78,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16448,
+      "frames" : 8421376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00083881395075244313,
+        0.0018690412374302817
+      ],
+      "second" : 79,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16541,
+      "frames" : 8468992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0021093079327775726,
+        0.0055991327421342028
+      ],
+      "second" : 80,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16635,
+      "frames" : 8517120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00015292478419374507,
+        0.00032309524997466453
+      ],
+      "second" : 81,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16729,
+      "frames" : 8565248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0016072115036286343,
+        0.0020878709500709949
+      ],
+      "second" : 82,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16823,
+      "frames" : 8613376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0036014682814504975,
+        0.00051188601581787774
+      ],
+      "second" : 83,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 16916,
+      "frames" : 8660992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0023363166342277994,
+        0.016539483295733841
+      ],
+      "second" : 84,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17010,
+      "frames" : 8709120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0030731032751073195,
+        0.00048254894807569148
+      ],
+      "second" : 85,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17104,
+      "frames" : 8757248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0015770213885719505,
+        0.0054238091734354274
+      ],
+      "second" : 86,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17198,
+      "frames" : 8805376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0030788090952320558,
+        0.00030577063946512069
+      ],
+      "second" : 87,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17291,
+      "frames" : 8852992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.008586716715511946,
+        0.0019670811403328971
+      ],
+      "second" : 88,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17385,
+      "frames" : 8901120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.010626972748767467,
+        0.0025628103720341426
+      ],
+      "second" : 89,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17479,
+      "frames" : 8949248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.01181029605689308,
+        0.00084159648914343432
+      ],
+      "second" : 90,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17573,
+      "frames" : 8997376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00075778414297658408,
+        0.00052875208117337202
+      ],
+      "second" : 91,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17666,
+      "frames" : 9044992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00039203203238583669,
+        0.00035650907743506929
+      ],
+      "second" : 92,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17760,
+      "frames" : 9093120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0014448542331182332,
+        0.00052453854458840926
+      ],
+      "second" : 93,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17854,
+      "frames" : 9141248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0010162967817856016,
+        0.0023148226436772138
+      ],
+      "second" : 94,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 17948,
+      "frames" : 9189376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0078149572230569054,
+        0.0011740666638618447
+      ],
+      "second" : 95,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18041,
+      "frames" : 9236992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00090261148320865809,
+        0.0013985241738056374
+      ],
+      "second" : 96,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18135,
+      "frames" : 9285120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0016447210757453978,
+        0.0099391469765621986
+      ],
+      "second" : 97,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18229,
+      "frames" : 9333248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0019010806688128257,
+        0.0021893677647999523
+      ],
+      "second" : 98,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18323,
+      "frames" : 9381376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0015510912549465709,
+        0.0020251048044103888
+      ],
+      "second" : 99,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18416,
+      "frames" : 9428992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0018778650279635408,
+        0.0016942822743325515
+      ],
+      "second" : 100,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18510,
+      "frames" : 9477120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0016430582611544175,
+        0.0017217106774404395
+      ],
+      "second" : 101,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18604,
+      "frames" : 9525248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0026138547926192962,
+        0.0025263978193191482
+      ],
+      "second" : 102,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18698,
+      "frames" : 9573376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0030341048312722716,
+        0.0082036146787384384
+      ],
+      "second" : 103,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18791,
+      "frames" : 9620992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0030255660148239345,
+        0.0022321050124773189
+      ],
+      "second" : 104,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18885,
+      "frames" : 9669120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00902947061237638,
+        0.0026188853051347561
+      ],
+      "second" : 105,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 18979,
+      "frames" : 9717248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00085441281728526977,
+        0.00055187649881849386
+      ],
+      "second" : 106,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19073,
+      "frames" : 9765376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0089975202466428643,
+        0.0048392420093770804
+      ],
+      "second" : 107,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19166,
+      "frames" : 9812992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0047854939107596101,
+        0.00073263912219553385
+      ],
+      "second" : 108,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19260,
+      "frames" : 9861120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0011675918643440926,
+        0.001755089354163943
+      ],
+      "second" : 109,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19354,
+      "frames" : 9909248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0020350597984549693,
+        0.00072009525342641182
+      ],
+      "second" : 110,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19448,
+      "frames" : 9957376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00076307416754153195,
+        0.014425378038060897
+      ],
+      "second" : 111,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19541,
+      "frames" : 10004992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0062690978028853333,
+        0.00074859617360124669
+      ],
+      "second" : 112,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19635,
+      "frames" : 10053120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.003529102416416025,
+        0.00069974550040693962
+      ],
+      "second" : 113,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19729,
+      "frames" : 10101248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0024523274271058505,
+        0.0096549307756530617
+      ],
+      "second" : 114,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19823,
+      "frames" : 10149376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0010377905041910392,
+        0.00087366959826465785
+      ],
+      "second" : 115,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 19916,
+      "frames" : 10196992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0061363600550789574,
+        0.001839895397054086
+      ],
+      "second" : 116,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20010,
+      "frames" : 10245120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0073652496019722515,
+        0.0068669959330777079
+      ],
+      "second" : 117,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20104,
+      "frames" : 10293248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0064597231482292931,
+        0.00055949592183042094
+      ],
+      "second" : 118,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20198,
+      "frames" : 10341376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0027072337407834618,
+        0.0059566388722136956
+      ],
+      "second" : 119,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20291,
+      "frames" : 10388992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0018504487483531457,
+        0.0028390181665565568
+      ],
+      "second" : 120,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20385,
+      "frames" : 10437120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00091091064117196309,
+        0.0032926656609614277
+      ],
+      "second" : 121,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20479,
+      "frames" : 10485248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00097514504555189013,
+        0.0037005665769466066
+      ],
+      "second" : 122,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20596,
+      "frames" : 10545152,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0010862288720369527,
+        0.0012260087347840776
+      ],
+      "second" : 123,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20690,
+      "frames" : 10593280,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.006513989654687395,
+        0.0066767511929551882
+      ],
+      "second" : 124,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20760,
+      "frames" : 10629120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0011965383572329839,
+        0.00092187061165869167
+      ],
+      "second" : 125,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20877,
+      "frames" : 10689024,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.010309571427100182,
+        0.012431630198178639
+      ],
+      "second" : 126,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 20948,
+      "frames" : 10725376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.011044377387355912,
+        0.00050842837536415513
+      ],
+      "second" : 127,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21041,
+      "frames" : 10772992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0015680709509965662,
+        0.0022896627287180673
+      ],
+      "second" : 128,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21135,
+      "frames" : 10821120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0025132281641070007,
+        0.013824461897941299
+      ],
+      "second" : 129,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21229,
+      "frames" : 10869248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0064922103744067964,
+        0.0075824026457526573
+      ],
+      "second" : 130,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21323,
+      "frames" : 10917376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.01810877743299568,
+        0.0017901996356802629
+      ],
+      "second" : 131,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21416,
+      "frames" : 10964992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0047974782570502144,
+        0.0087466289346488368
+      ],
+      "second" : 132,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21510,
+      "frames" : 11013120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0011422526687040334,
+        0.0010920500228377562
+      ],
+      "second" : 133,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21604,
+      "frames" : 11061248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0011418269756640071,
+        0.0018001036680249446
+      ],
+      "second" : 134,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21698,
+      "frames" : 11109376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.014820621703778909,
+        0.0011172257736066298
+      ],
+      "second" : 135,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21791,
+      "frames" : 11156992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00099418865902789109,
+        0.017434060109514992
+      ],
+      "second" : 136,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21885,
+      "frames" : 11205120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0026172839607842761,
+        0.00667910758917335
+      ],
+      "second" : 137,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 21979,
+      "frames" : 11253248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.002083697167018791,
+        0.0084469750018333865
+      ],
+      "second" : 138,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22073,
+      "frames" : 11301376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00037369869422916358,
+        0.0038709088166803502
+      ],
+      "second" : 139,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22166,
+      "frames" : 11348992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0016862021979457927,
+        0.0009642891401756788
+      ],
+      "second" : 140,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22260,
+      "frames" : 11397120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0044100998146838896,
+        0.0019520193215506678
+      ],
+      "second" : 141,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22354,
+      "frames" : 11445248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0087588980981635391,
+        0.0012356108865006069
+      ],
+      "second" : 142,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22448,
+      "frames" : 11493376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0032649682532738802,
+        0.004782030716066245
+      ],
+      "second" : 143,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22541,
+      "frames" : 11540992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.016248327658259315,
+        0.0035765154299604632
+      ],
+      "second" : 144,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22635,
+      "frames" : 11589120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.018155282690343739,
+        0.020247359644304769
+      ],
+      "second" : 145,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22729,
+      "frames" : 11637248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0012877054822882246,
+        0.0016804628580171636
+      ],
+      "second" : 146,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22823,
+      "frames" : 11685376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00088135570409624323,
+        0.0040002622703662165
+      ],
+      "second" : 147,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 22916,
+      "frames" : 11732992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0048445679604348299,
+        0.0017903213539848331
+      ],
+      "second" : 148,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23010,
+      "frames" : 11781120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0021147399297602207,
+        0.00088222692553658808
+      ],
+      "second" : 149,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23104,
+      "frames" : 11829248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0020866350856935845,
+        0.00089142256587487019
+      ],
+      "second" : 150,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23198,
+      "frames" : 11877376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00015085740245279367,
+        0.00058438812416231848
+      ],
+      "second" : 151,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23291,
+      "frames" : 11924992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00038828432525805516,
+        0.00077289107449346321
+      ],
+      "second" : 152,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23385,
+      "frames" : 11973120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0012650169235458807,
+        0.0005871095557546097
+      ],
+      "second" : 153,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23479,
+      "frames" : 12021248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0084948869184479688,
+        0.0053389827913664905
+      ],
+      "second" : 154,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23573,
+      "frames" : 12069376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.013285778065518795,
+        0.0011675221934499761
+      ],
+      "second" : 155,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23666,
+      "frames" : 12116992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0038274098873942071,
+        0.001517794223747274
+      ],
+      "second" : 156,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23760,
+      "frames" : 12165120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0022213790799687637,
+        0.016266608202528902
+      ],
+      "second" : 157,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23854,
+      "frames" : 12213248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.01968079509573771,
+        0.02268411775246355
+      ],
+      "second" : 158,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 23948,
+      "frames" : 12261376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.022143940248225649,
+        0.0172626165643638
+      ],
+      "second" : 159,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24041,
+      "frames" : 12308992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.019505386240816602,
+        0.011024829970442645
+      ],
+      "second" : 160,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24135,
+      "frames" : 12357120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.020650032364651724,
+        0.0051094856586587
+      ],
+      "second" : 161,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24229,
+      "frames" : 12405248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00071840288935444635,
+        0.0036907804838631057
+      ],
+      "second" : 162,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24323,
+      "frames" : 12453376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00019028732459748038,
+        0.00010947103810018439
+      ],
+      "second" : 163,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24416,
+      "frames" : 12500992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00039140029797337213,
+        0.00041243384530490325
+      ],
+      "second" : 164,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24510,
+      "frames" : 12549120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00076391583940467044,
+        0.0002285643950217441
+      ],
+      "second" : 165,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24604,
+      "frames" : 12597248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00011035359516491328,
+        0.0001211611957971825
+      ],
+      "second" : 166,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24698,
+      "frames" : 12645376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.00035817514222985703,
+        0.00030766781524193187
+      ],
+      "second" : 167,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24791,
+      "frames" : 12692992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0052412877139886016,
+        0.014815826961719751
+      ],
+      "second" : 168,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24885,
+      "frames" : 12741120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.012395927733590174,
+        0.023598519096466285
+      ],
+      "second" : 169,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 24979,
+      "frames" : 12789248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0010168007923316918,
+        0.0016047813109563611
+      ],
+      "second" : 170,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25073,
+      "frames" : 12837376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0018882936891978577,
+        0.0082429833730727556
+      ],
+      "second" : 171,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25166,
+      "frames" : 12884992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.00074833008570267029,
+        0.01321328370409549
+      ],
+      "second" : 172,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25260,
+      "frames" : 12933120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0069075304299078995,
+        0.00048533519855714001
+      ],
+      "second" : 173,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25354,
+      "frames" : 12981248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0011275423875276894,
+        0.0022940294277569058
+      ],
+      "second" : 174,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25448,
+      "frames" : 13029376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0056922515414610311,
+        0.0019724837439936251
+      ],
+      "second" : 175,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25541,
+      "frames" : 13076992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0072250740983264691,
+        0.0011983966050123228
+      ],
+      "second" : 176,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25635,
+      "frames" : 13125120,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        0.0041934443702892838,
+        0.005982800239426914
+      ],
+      "second" : 177,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25729,
+      "frames" : 13173248,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.011999025977084479,
+        0.00016346961006441429
+      ],
+      "second" : 178,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25823,
+      "frames" : 13221376,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          512
+        ]
+      ],
+      "rms" : [
+        0.0021278304413364659,
+        0.0091080205303416383
+      ],
+      "second" : 179,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    },
+    {
+      "callbacks" : 25916,
+      "frames" : 13268992,
+      "queuedFrames" : [
+        [
+          512,
+          1024,
+          512,
+          1024
+        ]
+      ],
+      "rms" : [
+        5.6377892574548153e-05,
+        0.00018637498615875047
+      ],
+      "second" : 180,
+      "sourceOverruns" : [
+        0
+      ],
+      "sourceUnderruns" : [
+        1
+      ]
+    }
+  ],
+  "scope" : "Live original player, independent HAL stream readback and per-process ring\/clock counters. No video frames, URLs or audio samples retained. No acoustic A\/V judgment.",
+  "signalReadBack" : true
+}

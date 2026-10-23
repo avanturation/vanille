@@ -93,6 +93,78 @@ confirming.render(input:UnsafePointer(inList.unsafeMutablePointer),output:outLis
 check(abs(l[frames-1]-0.1)<1e-5 && abs(r[frames-1]-0.1)<1e-5,"Only confirmed sources enter the output mix")
 a.deallocate(); b.deallocate(); c.deallocate(); l.deallocate(); r.deallocate(); inList.unsafeMutablePointer.deallocate(); outList.unsafeMutablePointer.deallocate()
 
+// The actual input bridge: an absent second process cannot starve the carrier.
+let bridge = RenderContext(sampleRate:48_000,routes:[RenderRoute(left:0,right:1),RenderRoute(left:2,right:3)],bufferedCapture:true)
+bridge.mailbox.publish(gains:[0.5,0.25],eq:EQSettings(),sampleRate:48_000)
+let bridgeInput = AudioBufferList.allocate(maximumBuffers:1)
+let bridgeOutput = AudioBufferList.allocate(maximumBuffers:1)
+let bridgePCM = UnsafeMutablePointer<Float>.allocate(capacity:frames*2); bridgePCM.initialize(repeating:0.1,count:frames*2)
+let bridgeResult = UnsafeMutablePointer<Float>.allocate(capacity:frames*2); bridgeResult.initialize(repeating:0,count:frames*2)
+bridgeInput[0] = AudioBuffer(mNumberChannels:2,mDataByteSize:UInt32(frames*8),mData:bridgePCM)
+bridgeOutput[0] = AudioBuffer(mNumberChannels:2,mDataByteSize:UInt32(frames*8),mData:bridgeResult)
+bridge.captureSlots[0].begin(); bridge.captureSlots[1].begin()
+bridge.renderCaptured(output:bridgeOutput.unsafeMutablePointer,frames:frames) // Consumer acknowledges slot epochs.
+for _ in 0..<2 { check(bridge.captureSlots[0].push(UnsafePointer(bridgeInput.unsafeMutablePointer)),"Input bridge accepts a bounded native block") }
+var bridgeMinimum = Float.infinity
+for _ in 0..<80 {
+    bridge.renderCaptured(output:bridgeOutput.unsafeMutablePointer,frames:frames)
+    bridgeMinimum = min(bridgeMinimum,bridgeResult[frames*2-1])
+    _ = bridge.captureSlots[0].push(UnsafePointer(bridgeInput.unsafeMutablePointer))
+}
+check(abs(bridgeMinimum-0.05)<1e-5 && !bridge.fault.load(ordering:.relaxed),"An absent/new input never interrupts another input's PCM or EQ history")
+check(bridge.captureSlots[0].underruns.load(ordering:.relaxed)==0,"Steady carrier has zero bridge underruns")
+bridge.captureSlots[1].enabled.store(false,ordering:.releasing)
+bridge.captureSlots[1].begin()
+bridge.renderCaptured(output:bridgeOutput.unsafeMutablePointer,frames:frames)
+check(abs(bridgeResult[frames*2-1]-0.05)<1e-5,"Reassigning a slot leaves the other source continuous")
+
+let bounded = CaptureSlot(capacity:frames*2)
+bounded.begin(); bounded.pull(into:bridgeResult,frames:frames,phaseGuard:0)
+_ = bounded.push(UnsafePointer(bridgeInput.unsafeMutablePointer)); _ = bounded.push(UnsafePointer(bridgeInput.unsafeMutablePointer))
+check(!bounded.push(UnsafePointer(bridgeInput.unsafeMutablePointer)) && bounded.overruns.load(ordering:.relaxed)==1,"An overrun rejects new data instead of overwriting a reader's samples")
+bounded.pull(into:bridgeResult,frames:frames,phaseGuard:0)
+check(abs(bridgeResult[0]-0.1)<1e-6 && abs(bridgeResult[frames*2-1]-0.1)<1e-6,"Rejected input cannot corrupt queued stereo PCM")
+let writtenBeforeInvalid = bounded.written.load(ordering:.acquiring)
+bridgePCM[17] = .nan
+check(!bounded.push(UnsafePointer(bridgeInput.unsafeMutablePointer)) && bounded.written.load(ordering:.acquiring)==writtenBeforeInvalid,"Nonfinite source PCM is never published to the common EQ/mixer")
+bridgePCM[17] = 0.1
+bridgePCM.deallocate(); bridgeResult.deallocate(); bridgeInput.unsafeMutablePointer.deallocate(); bridgeOutput.unsafeMutablePointer.deallocate()
+
+// Two real threads exercise publication, wraparound and stereo ownership.
+let stressSlot = CaptureSlot(capacity:2048), stressGroup = DispatchGroup()
+let stressFailed = Atomic<Bool>(false)
+let stressFrames = 64, stressBlocks = 2000
+let ackPCM = UnsafeMutablePointer<Float>.allocate(capacity:stressFrames*2)
+ackPCM.initialize(repeating:0,count:stressFrames*2)
+stressSlot.begin(); stressSlot.pull(into:ackPCM,frames:stressFrames,phaseGuard:0); ackPCM.deallocate()
+stressGroup.enter()
+DispatchQueue.global().async {
+    let input = AudioBufferList.allocate(maximumBuffers:1)
+    let pcm = UnsafeMutablePointer<Float>.allocate(capacity:stressFrames*2); pcm.initialize(repeating:0,count:stressFrames*2)
+    input[0] = AudioBuffer(mNumberChannels:2,mDataByteSize:UInt32(stressFrames*8),mData:pcm)
+    for block in 0..<stressBlocks {
+        for frame in 0..<stressFrames { let value = Float(block*stressFrames+frame)/Float(stressFrames*stressBlocks); pcm[frame*2] = value; pcm[frame*2+1] = -value }
+        while stressSlot.written.load(ordering:.acquiring)-stressSlot.consumed.load(ordering:.acquiring)+UInt64(stressFrames)>UInt64(stressSlot.capacity) { sched_yield() }
+        if !stressSlot.push(UnsafePointer(input.unsafeMutablePointer)) { stressFailed.store(true,ordering:.relaxed) }
+    }
+    pcm.deallocate(); input.unsafeMutablePointer.deallocate(); stressGroup.leave()
+}
+stressGroup.enter()
+DispatchQueue.global().async {
+    let pcm = UnsafeMutablePointer<Float>.allocate(capacity:stressFrames*2); pcm.initialize(repeating:0,count:stressFrames*2)
+    for block in 0..<stressBlocks {
+        let required = UInt64(block==0 ? stressFrames*2 : stressFrames)
+        while stressSlot.written.load(ordering:.acquiring)-stressSlot.consumed.load(ordering:.acquiring)<required { sched_yield() }
+        stressSlot.pull(into:pcm,frames:stressFrames,phaseGuard:0)
+        for frame in 0..<stressFrames {
+            let expected = Float(block*stressFrames+frame)/Float(stressFrames*stressBlocks)
+            if pcm[frame*2] != expected || pcm[frame*2+1] != -expected { stressFailed.store(true,ordering:.relaxed) }
+        }
+    }
+    pcm.deallocate(); stressGroup.leave()
+}
+check(stressGroup.wait(timeout:.now()+10) == .success && !stressFailed.load(ordering:.relaxed),"Concurrent capture/output threads preserve 128000 ordered stereo frames across wraps")
+
 // Exercise the production output ring with independent hardware-stream parameters.
 let routeMailbox = ParameterMailbox()
 var outputRoutes = [DeviceRoute(id:"wired",name:"Wired"),DeviceRoute(id:"wireless",name:"Wireless")]

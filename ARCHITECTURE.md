@@ -1,6 +1,6 @@
 # Architecture
 
-> The current app uses this direct Core Audio baseline, with the renderer/DSP unchanged. The native UI uses the system-managed NSPopover Liquid Glass material and respects current system output at launch. Later HLS/multi-AirPlay/virtual-output work is archived separately. See [RESTORATION_REPORT.md](RESTORATION_REPORT.md) for current scope.
+> Version 0.2.1 preserves the direct wired + one system AirPlay output and existing DSP. Independent input readers now feed the persistent physical output, so process discovery cannot reset its clock. No HLS, virtual-output driver, UI redesign or hardware-buffer-size change is part of this fix. See [AUDIO_DROPOUT_REPORT.md](AUDIO_DROPOUT_REPORT.md) for current measurements.
 
 ## 범위
 
@@ -8,8 +8,9 @@ Vanille는 Swift/AppKit/Core Audio로 구현합니다. 최소 macOS 15, arm64입
 
 ```mermaid
 flowchart TD
-    A[현재 시스템 출력으로 재생하는 앱들] --> B[앱별 Core Audio Process Tap]
-    B --> C[10ms Gain Ramp · 앱별 볼륨]
+    A[현재 시스템 출력으로 재생하는 앱들] --> B[프로세스별 Process Tap · 독립 입력 전용 Aggregate]
+    B --> Q[고정 메모리 SPSC 입력 슬롯]
+    Q --> C[기존 10ms Gain Ramp · 앱별 볼륨]
     C --> D[스테레오 합산 · 10 Band EQ · Headroom]
     D --> E[고정 메모리 스테레오 지연 링]
     E --> F[출력 1 Gain · Delay]
@@ -23,24 +24,29 @@ flowchart TD
 
 - `AppState`: 메인 스레드의 UI 상태·장치/프로세스 발견·설정 저장. HAL 변화와 잠자기/깨우기 알림을 수신합니다. 1초 주기 폴링으로 상태를 보완합니다.
 - `AudioController`: 직렬 제어 큐에서 엔진 생성·중지·재구성을 직렬화합니다. 250ms 감시 타이머가 콜백 중단과 포맷 변화를 검사합니다.
-- `AudioEngine`: `AudioHardwareCreateProcessTap`, `AudioHardwareCreateAggregateDevice`, `AudioDeviceCreateIOProcID`, `AudioDeviceStart/Stop`을 소유합니다. 종료 시 리더, IOProc, Aggregate, 탭 순서로 해제합니다.
-- `RenderContext`: HAL IOProc에서 입력 채널을 읽고 실제 출력 버퍼에 씁니다. 고정 할당 메모리와 원자적 파라미터 전달을 사용합니다. 콜백에서 파일/네트워크 I/O, UI 갱신, 메모리 할당, mutex를 사용하지 않습니다.
+- `AudioEngine`: 실제 목적지만 포함하는 사설 출력 Aggregate와 그 IOProc을 유지합니다. 출력 UID/Object ID/포맷이 달라지거나 사용자가 중지할 때만 출력 구성을 재생성합니다. 프로세스 목록과 테스트 음원 활성 상태는 출력 구성 키에 포함하지 않습니다.
+- `ProcessCapture`: 프로세스 하나마다 고정 멤버십의 Process Tap, 입력 전용 사설 Aggregate와 IOProc을 소유합니다. 새 프로세스/Helper는 입력 리더만 추가하고, 종료/우회 시 해당 리더만 해제합니다. 다른 소스의 tap description을 변경하지 않습니다.
+- `CaptureSlot`: 고정 크기 stereo SPSC 링으로 입력과 출력 IOProc을 연결합니다. 원자적 publication/소비 위치와 generation handshake를 사용합니다. 옛 producer가 종료되기 전에는 슬롯을 재사용하지 않습니다.
+- `RenderContext`: 슬롯의 stereo PCM을 기존 앱 Gain/EQ/출력 mixer로 전달합니다. 콜백에서 파일/네트워크 I/O, UI 갱신, 메모리 할당, mutex 또는 문자열 로그를 사용하지 않습니다.
+- `AudioDiagnostics`: 콜백은 host/sample timestamp와 gap/underrun 카운터를 원자적으로만 기록합니다. 제어 큐가 이를 수집해 bounded event history와 시스템 로그로 내보냅니다. 오디오 샘플은 로그에 포함하지 않습니다.
 
-최대 32개의 논리적 오디오 앱과 8개의 스테레오 목적지를 처리합니다. 제품 검증은 이 상한까지 수행하지 않았습니다. 출력별 지연 이력은 공유 스테레오 링 하나에 저장합니다. 48kHz에서 약 2.6MB이며 매 출력마다 별도 3초 버퍼를 만들지 않습니다.
+최대 32개 **프로세스 리더**와 8개의 스테레오 목적지를 처리합니다. Helper 리더의 Gain은 같은 논리적 앱의 Bundle ID 설정을 사용합니다. 제품 검증은 이 상한까지 수행하지 않았습니다. 출력별 지연 이력은 기존 공유 스테레오 링 하나에 저장합니다. 입력 슬롯의 용량 상한은 지연 목표가 아니며, 시작 시 실제 producer/output 콜백 중 큰 값 한 quantum만 위상 여유로 둡니다. 현재 입력 quantum은 512 frames/48kHz(약 10.7ms)입니다. 하드웨어 버퍼를 늘리지 않았고 장시간 누적 지연이나 절대 음향 지연은 별도 검증 대상입니다.
 
 ## 탭과 원본 출력
 
 `CATapDescription(stereoMixdownOfProcesses:)`에 현재 시스템 출력 Device UID를 지정합니다. Helper는 바깥 앱 Bundle ID, 부모 프로세스, Bundle ID 접두사를 통해 묶습니다. Vanille 자신의 PID/Bundle ID는 캡처 목록에서 제외하여 피드백을 피합니다. Bundle ID가 없는 활성 프로세스는 명시적인 Other System Audio 그룹으로 묶습니다.
 
-탭은 처음에는 `.unmuted`입니다. 실제 비영(非零) 신호가 수신된 소스만 제어 큐에서 `.mutedWhenTapped`로 전환하고 처리 신호를 내보냅니다. 짧은 소리를 폴링 사이에 놓치지 않도록 신호 수신 여부를 원자적으로 래치합니다. 권한 거부/초기 캡처 불가 상태에서는 원본이 계속 재생됩니다. 12초 동안 신호가 없으면 해당 시도를 중지합니다.
+탭은 처음에는 `.unmuted`입니다. 해당 입력 리더와 출력 소비 양쪽에서 실제 비영(非零) 신호를 확인한 소스만 제어 큐에서 `.mutedWhenTapped`로 전환합니다. 짧은 소리를 폴링 사이에 놓치지 않도록 신호 수신 여부를 원자적으로 래치합니다. 권한 거부/초기 캡처 불가/지원하지 않는 포맷에서는 원본이 계속 재생됩니다. 정상적인 무음이나 다른 프로세스의 시작/종료는 전체 출력을 중지할 이유가 아닙니다.
 
-`.mutedWhenTapped`는 리더가 중지되면 원본 출력을 복구하기 위한 공개 동작입니다. IO 콜백이 1.5초 이상 멈추거나 포맷이 바뀌면 제어 큐가 엔진을 중지합니다. 종료 작업 자체가 HAL에서 실패하면 원본을 unmute하고 콜백 메모리의 조기 해제를 피합니다. 정상 종료·중지 복구는 실제 검사하고 강제 종료/잠자기/서버 재시작은 별도 검증 상태로 기록합니다.
+`.mutedWhenTapped`는 리더가 중지되면 원본 출력을 복구하기 위한 공개 동작입니다. 입력 리더가 1.5초 이상 응답하지 않거나 버퍼 오류가 나면 해당 소스만 원본으로 복귀합니다. 출력 자체가 멈추거나 실제 출력 포맷이 바뀌면 전체 처리를 안전하게 중지합니다. HAL이 콜백과 Aggregate 해제를 모두 거부하면 그 메모리를 유지하고 슬롯 재사용을 차단합니다. 강제 종료/잠자기/서버 재시작의 모든 실패 조합은 별도 검증 대상입니다.
+
+`kAudioHardwarePropertyDefaultOutputDevice`는 미디어 캡처/출력 경로이며 `kAudioHardwarePropertyDefaultSystemOutputDevice`는 시스템 효과음의 별도 기본값입니다. 후자는 관찰·기록하지만 그것만 달라져도 출력 세션을 재시작하지 않습니다. 현재 미디어 출력과 다른 장치에서 재생되는 효과음은 원래 경로를 유지하며 처리됐다고 표시하지 않습니다.
 
 ## Aggregate와 장치별 처리
 
 Aggregate는 **비공개·비 stacked** 구성입니다. 각 실제 장치의 스테레오 채널을 독립적으로 유지하여 출력별 PCM Gain/Delay를 적용합니다. `kAudioAggregateDevicePropertyFullSubDeviceList` 순서, 활성 하위 장치 수, 입력/출력 채널 수, Float32 포맷과 Sample Rate를 검사합니다. 예기치 않은 레이아웃은 원본으로 복귀합니다. 물리 입력 스트림은 IOProc stream usage에서 끄므로 마이크 데이터를 읽지 않습니다.
 
-가능하면 유선 장치를 주 클록으로 정하고 나머지 하위 장치와 탭의 Core Audio Drift Compensation을 켭니다. 하드웨어 Sample Rate를 강제로 쓰지 않으며 Aggregate의 가상 스트림이 주 클록과 맞는지 검사합니다. HAL이 제공하는 변환/드리프트 보정을 사용하며 자체 AirPlay 프로토콜이나 비공식 드라이버를 구현하지 않습니다.
+가능하면 유선 장치를 출력 주 클록으로 정하고 나머지 하위 장치의 Core Audio Drift Compensation을 켭니다. 입력 전용 Aggregate에도 tap drift compensation을 지정합니다. 출력 Aggregate에는 탭이 없으므로 새 탭의 생성·mute 전환이 기존 출력/다른 입력의 클록을 재구성하지 않습니다. 하드웨어 Sample Rate를 강제로 쓰지 않습니다. 현재 입력은 출력과 같은 Sample Rate의 Float32 stereo만 허용하며 다르면 해당 소스를 원본으로 우회합니다. 자체 비동기 리샘플러를 새로 추가하지 않았습니다. 다른 sample rate 조합과 장시간 링 점유 드리프트의 검증이 필요합니다.
 
 출력별 Volume/Mute는 PCM Gain이며 10ms ramp가 있습니다. Delay는 Sample Rate로 ms를 샘플 수로 변환한 실제 읽기 위치입니다. 변경 시 이전/새 위치를 30ms crossfade합니다. 크기가 다른 실제 장치 버퍼를 억지로 직접 연결하지 않고 Aggregate가 한 IO 타임라인을 제공하도록 합니다.
 
