@@ -42,12 +42,13 @@ Maximum physical output callback interval was 10.69 ms (combined), 2.69 ms (AirP
 
 - **Safari YouTube native live observation passed for 180 seconds** through wired + one system AirPlay. Seven system-alert requests and three quiet transient process start/exit pairs ran while the original Safari player kept playing. Output stop/start events **0**, additional output clock/sample gaps **0**, additional Safari ring under/overruns **0 / 0**, additional Safari capture gaps **0**. Both real outputs returned signal. First/last 30-second median queue occupancy differed by **512 frames**, one actual producer quantum; occupancy remained bounded at 512–1024 frames, with no observed growing backlog. One Safari input underrun existed before monitoring at startup and stayed at one; it is not counted as a steady-playback pass. [safari-playback.json](Reports/Dropout/2026-10-24/safari-playback.json).
 
-No new acoustic/video-sync judgment has yet been received from the user. This test observes existing-player audio clocks and rings, not video frames or speaker arrival time.
+- The user subsequently confirmed during the Safari test: **“끊김 없고 영상과 맞음”** (no interruption; video and sound match). This verifies the tested wired + one system AirPlay listening scenario. Exact speaker-arrival latency was not measured and other networks/devices/durations are not covered by that confirmation.
+- [GitHub Xcode CI](https://github.com/avanturation/vanille/actions/runs/40006766162) passed on **macOS 15 and macOS 26** for implementation commit `1549988dcb7305e1103cf576fe22f136dc55396e`: Release Xcode project build, 72 DSP/buffer checks, release preparation and fresh archive validation on both runners.
 
 ## PARTIAL
 
 - Actual native alert requests and independently launched short effects cover the notification/process-churn path. No message was sent to another person to simulate a messenger send; that exact application's effect remains a manual regression case.
-- Stream readback measures PCM submitted to physical outputs. It cannot hear room acoustics, establish exact audible A/V latency, or prove absence of a sub-window audible click. The earlier user's video-sync confirmation predates this input handoff.
+- Stream readback measures PCM submitted to physical outputs. It cannot establish exact audible A/V latency or prove absence of a sub-window audible click. The new user confirmation covers the tested Safari scenario, not instrumented acoustic calibration or every application.
 - The connected AirPlay endpoint cannot be selected as the system-effects default on this Mac. Distinct effects/media routes and effects-route changes were tested; shared AirPlay effects/media routing was not.
 - Input capture currently requires Float32 stereo at the output sample rate; unsupported combinations bypass. Native 44.1/96 kHz combinations and long-duration drift require further qualification.
 
